@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="KR-PH 달력">
+    <title>2026 한국-필리핀 공휴일 달력</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body {
+            overscroll-behavior: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Lucide Icons as SVG components
+        const ChevronLeft = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        );
+
+        const ChevronRight = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        );
+
+        const Plus = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        );
+
+        const X = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        );
+
+        const Check = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        );
+
+        const HolidayCalendar = () => {
+            const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+            const [todos, setTodos] = useState(() => {
+                const saved = localStorage.getItem('calendar-todos');
+                return saved ? JSON.parse(saved) : {};
+            });
+            const [selectedDate, setSelectedDate] = useState(null);
+            const [showTodoModal, setShowTodoModal] = useState(false);
+            const [newTodo, setNewTodo] = useState('');
+
+            React.useEffect(() => {
+                localStorage.setItem('calendar-todos', JSON.stringify(todos));
+            }, [todos]);
+
+            const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+            const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
+
+            const koreanHolidays = {
+                '2026-01-01': '신정',
+                '2026-01-17': 'OFF 토요일',
+                '2026-01-24': 'OFF 토요일',
+                '2026-01-31': 'OFF 토요일',
+                '2026-02-14': 'OFF 토요일',
+                '2026-02-16': '설날 전날',
+                '2026-02-17': '설날',
+                '2026-02-18': '설날 다음날',
+                '2026-02-28': 'OFF 토요일',
+                '2026-03-01': '삼일절',
+                '2026-03-02': '삼일절 대체공휴일',
+                '2026-03-14': 'OFF 토요일',
+                '2026-03-28': 'OFF 토요일',
+                '2026-04-11': 'OFF 토요일',
+                '2026-04-25': 'OFF 토요일',
+                '2026-05-05': '어린이날',
+                '2026-05-09': 'OFF 토요일',
+                '2026-05-23': 'OFF 토요일',
+                '2026-05-24': '석가탄신일',
+                '2026-05-26': '석가탄신일 대체공휴일',
+                '2026-06-06': '현충일',
+                '2026-06-20': 'OFF 토요일',
+                '2026-07-04': 'OFF 토요일',
+                '2026-07-17': '제헌절',
+                '2026-07-18': 'OFF 토요일',
+                '2026-08-01': 'OFF 토요일',
+                '2026-08-15': '광복절',
+                '2026-08-29': 'OFF 토요일',
+                '2026-09-12': 'OFF 토요일',
+                '2026-09-24': '추석 전날',
+                '2026-09-25': '추석',
+                '2026-09-26': '추석 다음날',
+                '2026-10-03': '개천절',
+                '2026-10-06': '개천절 대체공휴일',
+                '2026-10-09': '한글날',
+                '2026-10-10': 'OFF 토요일',
+                '2026-10-24': 'OFF 토요일',
+                '2026-11-07': 'OFF 토요일',
+                '2026-11-21': 'OFF 토요일',
+                '2026-12-05': 'OFF 토요일',
+                '2026-12-19': 'OFF 토요일',
+                '2026-12-25': '크리스마스'
+            };
+
+            const philippineHolidays = {
+                '2026-01-01': "New Year's Day",
+                '2026-02-17': 'Chinese New Year',
+                '2026-04-02': 'Maundy Thursday',
+                '2026-04-03': 'Good Friday',
+                '2026-04-04': 'Black Saturday',
+                '2026-04-09': 'Araw ng Kagitingan',
+                '2026-05-01': 'Labor Day',
+                '2026-06-12': 'Independence Day',
+                '2026-08-21': 'Ninoy Aquino Day',
+                '2026-08-31': "National Heroes' Day",
+                '2026-11-01': "All Saints' Day",
+                '2026-11-02': "All Souls' Day",
+                '2026-11-30': 'Bonifacio Day',
+                '2026-12-08': 'Immaculate Conception',
+                '2026-12-24': 'Christmas Eve',
+                '2026-12-25': 'Christmas Day',
+                '2026-12-30': 'Rizal Day',
+                '2026-12-31': 'Last Day of the Year'
+            };
+
+            const getDaysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
+            const getFirstDayOfMonth = (month, year) => new Date(year, month, 1).getDay();
+            const formatDate = (year, month, day) => {
+                const m = String(month + 1).padStart(2, '0');
+                const d = String(day).padStart(2, '0');
+                return `${year}-${m}-${d}`;
+            };
+
+            const handleDateClick = (dateStr) => {
+                setSelectedDate(dateStr);
+                setShowTodoModal(true);
+                setNewTodo('');
+            };
+
+            const addTodo = () => {
+                if (newTodo.trim() === '') return;
+                const newTodoItem = { id: Date.now(), text: newTodo, completed: false };
+                setTodos(prev => ({ ...prev, [selectedDate]: [...(prev[selectedDate] || []), newTodoItem] }));
+                setNewTodo('');
+            };
+
+            const toggleTodo = (dateStr, todoId) => {
+                setTodos(prev => ({
+                    ...prev,
+                    [dateStr]: prev[dateStr].map(todo => todo.id === todoId ? { ...todo, completed: !todo.completed } : todo)
+                }));
+            };
+
+            const deleteTodo = (dateStr, todoId) => {
+                setTodos(prev => ({ ...prev, [dateStr]: prev[dateStr].filter(todo => todo.id !== todoId) }));
+            };
+
+            const renderCalendar = () => {
+                const year = 2026;
+                const daysInMonth = getDaysInMonth(currentMonth, year);
+                const firstDay = getFirstDayOfMonth(currentMonth, year);
+                const days = [];
+
+                for (let i = 0; i < firstDay; i++) {
+                    days.push(<div key={`empty-${i}`} className="p-1 sm:p-2"></div>);
+                }
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = formatDate(year, currentMonth, day);
+                    const dayOfWeek = new Date(year, currentMonth, day).getDay();
+                    const isKoreanHoliday = koreanHolidays[dateStr];
+                    const isPhilippineHoliday = philippineHolidays[dateStr];
+                    const isSunday = dayOfWeek === 0;
+                    const isToday = new Date().toDateString() === new Date(year, currentMonth, day).toDateString();
+                    const dayTodos = todos[dateStr] || [];
+                    const incompleteTodos = dayTodos.filter(t => !t.completed).length;
+                    const isRed = isSunday || isKoreanHoliday || isPhilippineHoliday;
+
+                    days.push(
+                        <div key={day} onClick={() => handleDateClick(dateStr)}
+                            className={`p-1 sm:p-2 min-h-16 sm:min-h-20 border border-gray-200 cursor-pointer hover:bg-gray-50 transition ${isToday ? 'bg-blue-50 ring-2 ring-blue-400' : 'bg-white'}`}>
+                            <div className={`font-semibold text-xs sm:text-base mb-1 ${isRed ? 'text-red-600' : 'text-gray-700'}`}>{day}</div>
+                            <div className="text-xs space-y-1">
+                                {isKoreanHoliday && <div className="text-red-600 font-medium text-xs hidden sm:block">{isKoreanHoliday}</div>}
+                                {isPhilippineHoliday && (
+                                    <a href={`https://en.wikipedia.org/wiki/${isPhilippineHoliday.replace(/ /g, '_').replace(/'/g, '%27')}`}
+                                        target="_blank" rel="noopener noreferrer"
+                                        className="text-red-600 font-medium text-xs hidden sm:block hover:underline"
+                                        onClick={(e) => e.stopPropagation()}>
+                                        {isPhilippineHoliday}
+                                    </a>
+                                )}
+                                {incompleteTodos > 0 && (
+                                    <div className="mt-1 px-1 sm:px-2 py-0.5 sm:py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">{incompleteTodos}</div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                }
+                return days;
+            };
+
+            return (
+                <div className="w-full min-h-screen bg-gray-50 p-2 sm:p-4">
+                    <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-3 sm:p-6">
+                        <div className="flex items-center justify-between mb-4 sm:mb-6">
+                            <button onClick={() => setCurrentMonth(prev => prev > 0 ? prev - 1 : 11)}
+                                className="p-1 sm:p-2 hover:bg-gray-100 rounded-full transition">
+                                <ChevronLeft />
+                            </button>
+                            <h1 className="text-xl sm:text-3xl font-bold text-gray-800">2026년 {months[currentMonth]}</h1>
+                            <button onClick={() => setCurrentMonth(prev => prev < 11 ? prev + 1 : 0)}
+                                className="p-1 sm:p-2 hover:bg-gray-100 rounded-full transition">
+                                <ChevronRight />
+                            </button>
+                        </div>
+
+                        <div className="mb-3 sm:mb-4 flex gap-2 sm:gap-4 text-xs sm:text-sm flex-wrap">
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                <span className="text-red-600 font-bold">🇰🇷</span>
+                                <span className="hidden sm:inline">한국 공휴일</span>
+                            </div>
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                <span className="text-red-600 font-bold">🇵🇭</span>
+                                <span className="hidden sm:inline">필리핀 공휴일</span>
+                            </div>
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                <span className="text-blue-700 font-bold">📝</span>
+                                <span className="hidden sm:inline">날짜 클릭하여 할 일 추가</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-7 gap-0 border border-gray-300">
+                            {daysOfWeek.map((day, index) => (
+                                <div key={day} className={`p-2 sm:p-3 text-center text-xs sm:text-base font-bold border-b border-gray-300 ${index === 0 ? 'text-red-600 bg-red-50' : 'text-gray-700 bg-gray-100'}`}>
+                                    {day}
+                                </div>
+                            ))}
+                            {renderCalendar()}
+                        </div>
+                    </div>
+
+                    {showTodoModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-lg sm:text-xl font-bold text-gray-800">{selectedDate} 할 일</h2>
+                                    <button onClick={() => setShowTodoModal(false)} className="text-gray-500 hover:text-gray-700">
+                                        <X />
+                                    </button>
+                                </div>
+
+                                <div className="mb-4">
+                                    <div className="text-xs sm:text-sm text-gray-600 mb-2">
+                                        {koreanHolidays[selectedDate] && (
+                                            <div className="text-red-600 font-medium">🇰🇷 {koreanHolidays[selectedDate]}</div>
+                                        )}
+                                        {philippineHolidays[selectedDate] && (
+                                            <div className="text-red-600 font-medium">
+                                                🇵🇭 <a href={`https://en.wikipedia.org/wiki/${philippineHolidays[selectedDate].replace(/ /g, '_').replace(/'/g, '%27')}`}
+                                                    target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                                    {philippineHolidays[selectedDate]}
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input type="text" value={newTodo} onChange={(e) => setNewTodo(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && addTodo()}
+                                            placeholder="새 할 일을 입력하세요"
+                                            className="flex-1 px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                        <button onClick={addTodo} className="px-3 sm:px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                                            <Plus />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 max-h-64 sm:max-h-96 overflow-y-auto">
+                                    {(todos[selectedDate] || []).length === 0 ? (
+                                        <p className="text-gray-400 text-center py-8 text-sm">할 일이 없습니다</p>
+                                    ) : (
+                                        (todos[selectedDate] || []).map(todo => (
+                                            <div key={todo.id} className="flex items-center gap-2 p-2 sm:p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                                                <button onClick={() => toggleTodo(selectedDate, todo.id)}
+                                                    className={`flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center ${todo.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-green-500'}`}>
+                                                    {todo.completed && <Check />}
+                                                </button>
+                                                <span className={`flex-1 text-sm sm:text-base ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                                                    {todo.text}
+                                                </span>
+                                                <button onClick={() => deleteTodo(selectedDate, todo.id)} className="text-red-500 hover:text-red-700">
+                                                    <X />
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<HolidayCalendar />, document.getElementById('root'));
+    </script>
+</body>
+</html>
