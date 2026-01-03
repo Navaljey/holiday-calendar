@@ -2,743 +2,189 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="KR-PH 달력">
     <title>2026 한국-필리핀 공휴일 달력</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
-            background-color: #ffffff;
-            overscroll-behavior: none;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 16px;
-        }
-
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 20px 0;
-            margin-bottom: 20px;
-        }
-
-        .header h1 {
-            font-size: 22px;
-            font-weight: 400;
-            color: #3c4043;
-        }
-
-        .nav-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.2s;
-        }
-
-        .nav-button:hover {
-            background-color: #f1f3f4;
-        }
-
-        .nav-button svg {
-            width: 24px;
-            height: 24px;
-            stroke: #5f6368;
-        }
-
-        .legend {
-            display: flex;
-            gap: 16px;
-            margin-bottom: 16px;
-            font-size: 12px;
-            color: #5f6368;
-            flex-wrap: wrap;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .calendar {
-            border: 1px solid #dadce0;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #ffffff;
-        }
-
-        .calendar-header {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            background-color: #ffffff;
-            border-bottom: 1px solid #dadce0;
-        }
-
-        .calendar-header-day {
-            padding: 12px 8px;
-            text-align: center;
-            font-size: 11px;
-            font-weight: 500;
-            color: #70757a;
-            text-transform: uppercase;
-        }
-
-        .calendar-header-day.sunday {
-            color: #d93025;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-        }
-
-        .calendar-day {
-            min-height: 100px;
-            padding: 8px;
-            border-right: 1px solid #dadce0;
-            border-bottom: 1px solid #dadce0;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            position: relative;
-        }
-
-        .calendar-day:nth-child(7n) {
-            border-right: none;
-        }
-
-        .calendar-day:hover {
-            background-color: #f8f9fa;
-        }
-
-        .calendar-day.today {
-            background-color: #e8f0fe;
-        }
-
-        .day-number {
-            font-size: 12px;
-            font-weight: 500;
-            margin-bottom: 4px;
-            width: 26px;
-            height: 26px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-
-        .day-number.red {
-            color: #d93025;
-        }
-
-        .day-number.today {
-            background-color: #1a73e8;
-            color: #ffffff;
-        }
-
-        .holiday-label {
-            font-size: 10px;
-            margin-top: 2px;
-            line-height: 1.3;
-            color: #d93025;
-        }
-
-        .holiday-label a {
-            color: #d93025;
-            text-decoration: none;
-        }
-
-        .holiday-label a:hover {
-            text-decoration: underline;
-        }
-
-        .todo-badge {
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            background-color: #1a73e8;
-            color: white;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-weight: 500;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-        }
-
-        .modal.show {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 8px;
-            max-width: 500px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-        }
-
-        .modal-header {
-            padding: 24px 24px 16px;
-            border-bottom: 1px solid #dadce0;
-        }
-
-        .modal-title {
-            font-size: 16px;
-            font-weight: 500;
-            color: #3c4043;
-            margin-bottom: 8px;
-        }
-
-        .modal-holidays {
-            font-size: 12px;
-            color: #d93025;
-            margin-top: 8px;
-        }
-
-        .modal-holidays a {
-            color: #1a73e8;
-            text-decoration: none;
-        }
-
-        .modal-holidays a:hover {
-            text-decoration: underline;
-        }
-
-        .modal-body {
-            padding: 16px 24px 24px;
-        }
-
-        .todo-input-container {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .todo-input {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid #dadce0;
-            border-radius: 4px;
-            font-size: 14px;
-            font-family: inherit;
-            outline: none;
-        }
-
-        .todo-input:focus {
-            border-color: #1a73e8;
-            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
-        }
-
-        .add-button {
-            padding: 12px 24px;
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-
-        .add-button:hover {
-            background-color: #1765cc;
-        }
-
-        .todo-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .todo-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        }
-
-        .todo-item:hover {
-            background-color: #f1f3f4;
-        }
-
-        .todo-checkbox {
-            width: 18px;
-            height: 18px;
-            border: 2px solid #5f6368;
-            border-radius: 2px;
-            cursor: pointer;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .todo-checkbox.checked {
-            background-color: #1a73e8;
-            border-color: #1a73e8;
-        }
-
-        .todo-checkbox svg {
-            width: 12px;
-            height: 12px;
-            stroke: white;
-            display: none;
-        }
-
-        .todo-checkbox.checked svg {
-            display: block;
-        }
-
-        .todo-text {
-            flex: 1;
-            font-size: 14px;
-            color: #3c4043;
-            word-break: break-word;
-        }
-
-        .todo-text.completed {
-            text-decoration: line-through;
-            color: #5f6368;
-        }
-
-        .delete-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: background-color 0.2s;
-        }
-
-        .delete-button:hover {
-            background-color: #fce8e6;
-        }
-
-        .delete-button svg {
-            width: 18px;
-            height: 18px;
-            stroke: #d93025;
-        }
-
-        .close-button {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .close-button:hover {
-            background-color: #f1f3f4;
-        }
-
-        .close-button svg {
-            width: 24px;
-            height: 24px;
-            stroke: #5f6368;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #5f6368;
-            font-size: 14px;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 8px;
-            }
-
-            .header h1 {
-                font-size: 18px;
-            }
-
-            .calendar-day {
-                min-height: 80px;
-                padding: 4px;
-            }
-
-            .holiday-label {
-                display: none;
-            }
-
-            .modal-content {
-                margin: 0;
-            }
-        }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-white">
     <div id="root"></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-    <script>
-        const koreanHolidays = {
-            '2026-01-01': '신정',
-            '2026-01-17': 'OFF 토요일',
-            '2026-01-24': 'OFF 토요일',
-            '2026-01-31': 'OFF 토요일',
-            '2026-02-14': 'OFF 토요일',
-            '2026-02-16': '설날 전날',
-            '2026-02-17': '설날',
-            '2026-02-18': '설날 다음날',
-            '2026-02-28': 'OFF 토요일',
-            '2026-03-01': '삼일절',
-            '2026-03-02': '삼일절 대체공휴일',
-            '2026-03-14': 'OFF 토요일',
-            '2026-03-28': 'OFF 토요일',
-            '2026-04-11': 'OFF 토요일',
-            '2026-04-25': 'OFF 토요일',
-            '2026-05-05': '어린이날',
-            '2026-05-09': 'OFF 토요일',
-            '2026-05-23': 'OFF 토요일',
-            '2026-05-24': '석가탄신일',
-            '2026-05-26': '석가탄신일 대체공휴일',
-            '2026-06-06': '현충일',
-            '2026-06-20': 'OFF 토요일',
-            '2026-07-04': 'OFF 토요일',
-            '2026-07-17': '제헌절',
-            '2026-07-18': 'OFF 토요일',
-            '2026-08-01': 'OFF 토요일',
-            '2026-08-15': '광복절',
-            '2026-08-29': 'OFF 토요일',
-            '2026-09-12': 'OFF 토요일',
-            '2026-09-24': '추석 전날',
-            '2026-09-25': '추석',
-            '2026-09-26': '추석 다음날',
-            '2026-10-03': '개천절',
-            '2026-10-06': '개천절 대체공휴일',
-            '2026-10-09': '한글날',
-            '2026-10-10': 'OFF 토요일',
-            '2026-10-24': 'OFF 토요일',
-            '2026-11-07': 'OFF 토요일',
-            '2026-11-21': 'OFF 토요일',
-            '2026-12-05': 'OFF 토요일',
-            '2026-12-19': 'OFF 토요일',
-            '2026-12-25': '크리스마스'
-        };
+        const koreanHolidays = {'2026-01-01':'신정','2026-01-17':'OFF 토요일','2026-01-24':'OFF 토요일','2026-01-31':'OFF 토요일','2026-02-14':'OFF 토요일','2026-02-16':'설날 전날','2026-02-17':'설날','2026-02-18':'설날 다음날','2026-02-28':'OFF 토요일','2026-03-01':'삼일절','2026-03-02':'삼일절 대체공휴일','2026-03-14':'OFF 토요일','2026-03-28':'OFF 토요일','2026-04-11':'OFF 토요일','2026-04-25':'OFF 토요일','2026-05-05':'어린이날','2026-05-09':'OFF 토요일','2026-05-23':'OFF 토요일','2026-05-24':'석가탄신일','2026-05-26':'석가탄신일 대체공휴일','2026-06-06':'현충일','2026-06-20':'OFF 토요일','2026-07-04':'OFF 토요일','2026-07-17':'제헌절','2026-07-18':'OFF 토요일','2026-08-01':'OFF 토요일','2026-08-15':'광복절','2026-08-29':'OFF 토요일','2026-09-12':'OFF 토요일','2026-09-24':'추석 전날','2026-09-25':'추석','2026-09-26':'추석 다음날','2026-10-03':'개천절','2026-10-06':'개천절 대체공휴일','2026-10-09':'한글날','2026-10-10':'OFF 토요일','2026-10-24':'OFF 토요일','2026-11-07':'OFF 토요일','2026-11-21':'OFF 토요일','2026-12-05':'OFF 토요일','2026-12-19':'OFF 토요일','2026-12-25':'크리스마스'};
+        const philippineHolidays = {'2026-01-01':"New Year's Day",'2026-02-17':'Chinese New Year','2026-04-02':'Maundy Thursday','2026-04-03':'Good Friday','2026-04-04':'Black Saturday','2026-04-09':'Araw ng Kagitingan','2026-05-01':'Labor Day','2026-06-12':'Independence Day','2026-08-21':'Ninoy Aquino Day','2026-08-31':"National Heroes' Day",'2026-11-01':"All Saints' Day",'2026-11-02':"All Souls' Day",'2026-11-30':'Bonifacio Day','2026-12-08':'Immaculate Conception','2026-12-24':'Christmas Eve','2026-12-25':'Christmas Day','2026-12-30':'Rizal Day','2026-12-31':'Last Day of the Year'};
 
-        const philippineHolidays = {
-            '2026-01-01': "New Year's Day",
-            '2026-02-17': 'Chinese New Year',
-            '2026-04-02': 'Maundy Thursday',
-            '2026-04-03': 'Good Friday',
-            '2026-04-04': 'Black Saturday',
-            '2026-04-09': 'Araw ng Kagitingan',
-            '2026-05-01': 'Labor Day',
-            '2026-06-12': 'Independence Day',
-            '2026-08-21': 'Ninoy Aquino Day',
-            '2026-08-31': "National Heroes' Day",
-            '2026-11-01': "All Saints' Day",
-            '2026-11-02': "All Souls' Day",
-            '2026-11-30': 'Bonifacio Day',
-            '2026-12-08': 'Immaculate Conception',
-            '2026-12-24': 'Christmas Eve',
-            '2026-12-25': 'Christmas Day',
-            '2026-12-30': 'Rizal Day',
-            '2026-12-31': 'Last Day of the Year'
-        };
+        const App = () => {
+            const [month, setMonth] = useState(new Date().getMonth());
+            const [todos, setTodos] = useState({});
+            const [modal, setModal] = useState(null);
+            const [input, setInput] = useState('');
 
-        let currentMonth = new Date().getMonth();
-        let todos = {};
-        let selectedDate = null;
+            useEffect(() => {
+                const saved = localStorage.getItem('todos');
+                if (saved) setTodos(JSON.parse(saved));
+            }, []);
 
-        // Load todos from localStorage
-        try {
-            const saved = localStorage.getItem('calendar-todos');
-            if (saved) {
-                todos = JSON.parse(saved);
-            }
-        } catch (e) {
-            console.error('Failed to load todos:', e);
-        }
+            useEffect(() => {
+                localStorage.setItem('todos', JSON.stringify(todos));
+            }, [todos]);
 
-        function saveTodos() {
-            try {
-                localStorage.setItem('calendar-todos', JSON.stringify(todos));
-            } catch (e) {
-                console.error('Failed to save todos:', e);
-            }
-        }
+            const fmt = (y, m, d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const days = (m) => new Date(2026, m+1, 0).getDate();
+            const first = (m) => new Date(2026, m, 1).getDay();
 
-        const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-        const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
-
-        function formatDate(year, month, day) {
-            const m = String(month + 1).padStart(2, '0');
-            const d = String(day).padStart(2, '0');
-            return `${year}-${m}-${d}`;
-        }
-
-        function getDaysInMonth(month, year) {
-            return new Date(year, month + 1, 0).getDate();
-        }
-
-        function getFirstDayOfMonth(month, year) {
-            return new Date(year, month, 1).getDay();
-        }
-
-        function renderCalendar() {
-            const year = 2026;
-            const daysInMonth = getDaysInMonth(currentMonth, year);
-            const firstDay = getFirstDayOfMonth(currentMonth, year);
-            let html = '';
-
-            // Empty cells
-            for (let i = 0; i < firstDay; i++) {
-                html += '<div class="calendar-day"></div>';
-            }
-
-            // Days
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dateStr = formatDate(year, currentMonth, day);
-                const dayOfWeek = new Date(year, currentMonth, day).getDay();
-                const isKoreanHoliday = koreanHolidays[dateStr];
-                const isPhilippineHoliday = philippineHolidays[dateStr];
-                const isSunday = dayOfWeek === 0;
-                const today = new Date();
-                const isToday = today.getFullYear() === year && today.getMonth() === currentMonth && today.getDate() === day;
-                const dayTodos = todos[dateStr] || [];
-                const incompleteTodos = dayTodos.filter(t => !t.completed).length;
-                const isRed = isSunday || isKoreanHoliday || isPhilippineHoliday;
-
-                html += `<div class="calendar-day ${isToday ? 'today' : ''}" onclick="openModal('${dateStr}')">`;
-                html += `<div class="day-number ${isRed ? 'red' : ''} ${isToday ? 'today' : ''}">${day}</div>`;
-                
-                if (isKoreanHoliday) {
-                    html += `<div class="holiday-label">${isKoreanHoliday}</div>`;
+            const monthHolidays = () => {
+                const h = [];
+                for (let d = 1; d <= days(month); d++) {
+                    const date = fmt(2026, month, d);
+                    if (koreanHolidays[date] || philippineHolidays[date]) {
+                        h.push({date, day: d, kr: koreanHolidays[date], ph: philippineHolidays[date]});
+                    }
                 }
-                if (isPhilippineHoliday) {
-                    const wikiUrl = `https://en.wikipedia.org/wiki/${isPhilippineHoliday.replace(/ /g, '_').replace(/'/g, '%27')}`;
-                    html += `<div class="holiday-label"><a href="${wikiUrl}" target="_blank" onclick="event.stopPropagation()">${isPhilippineHoliday}</a></div>`;
+                return h;
+            };
+
+            const monthTodos = () => {
+                const t = {};
+                for (let d = 1; d <= days(month); d++) {
+                    const date = fmt(2026, month, d);
+                    if (todos[date]?.length) t[date] = todos[date];
                 }
-                
-                if (incompleteTodos > 0) {
-                    html += `<div class="todo-badge">${incompleteTodos}</div>`;
-                }
-                
-                html += '</div>';
-            }
+                return t;
+            };
 
-            document.getElementById('calendar-grid').innerHTML = html;
-        }
+            const add = () => {
+                if (!input.trim()) return;
+                setTodos(prev => ({...prev, [modal]: [...(prev[modal] || []), {id: Date.now(), text: input, done: false}]}));
+                setInput('');
+            };
 
-        function openModal(dateStr) {
-            selectedDate = dateStr;
-            document.getElementById('modal').classList.add('show');
-            document.getElementById('modal-title').textContent = dateStr + ' 할 일';
-            
-            let holidayHtml = '';
-            if (koreanHolidays[dateStr]) {
-                holidayHtml += `<div>🇰🇷 ${koreanHolidays[dateStr]}</div>`;
-            }
-            if (philippineHolidays[dateStr]) {
-                const wikiUrl = `https://en.wikipedia.org/wiki/${philippineHolidays[dateStr].replace(/ /g, '_').replace(/'/g, '%27')}`;
-                holidayHtml += `<div>🇵🇭 <a href="${wikiUrl}" target="_blank">${philippineHolidays[dateStr]}</a></div>`;
-            }
-            document.getElementById('modal-holidays').innerHTML = holidayHtml;
-            
-            document.getElementById('todo-input').value = '';
-            renderTodos();
-        }
+            const toggle = (date, id) => {
+                setTodos(prev => ({...prev, [date]: prev[date].map(t => t.id === id ? {...t, done: !t.done} : t)}));
+            };
 
-        function closeModal() {
-            document.getElementById('modal').classList.remove('show');
-        }
-
-        function addTodo() {
-            const input = document.getElementById('todo-input');
-            const text = input.value.trim();
-            
-            if (text === '') return;
-            
-            if (!todos[selectedDate]) {
-                todos[selectedDate] = [];
-            }
-            
-            todos[selectedDate].push({
-                id: Date.now(),
-                text: text,
-                completed: false
-            });
-            
-            input.value = '';
-            saveTodos();
-            renderTodos();
-            renderCalendar();
-        }
-
-        function toggleTodo(todoId) {
-            const todoList = todos[selectedDate];
-            const todo = todoList.find(t => t.id === todoId);
-            if (todo) {
-                todo.completed = !todo.completed;
-                saveTodos();
-                renderTodos();
-                renderCalendar();
-            }
-        }
-
-        function deleteTodo(todoId) {
-            todos[selectedDate] = todos[selectedDate].filter(t => t.id !== todoId);
-            saveTodos();
-            renderTodos();
-            renderCalendar();
-        }
-
-        function renderTodos() {
-            const todoList = todos[selectedDate] || [];
-            let html = '';
-            
-            if (todoList.length === 0) {
-                html = '<div class="empty-state">할 일이 없습니다</div>';
-            } else {
-                todoList.forEach(todo => {
-                    html += `
-                        <div class="todo-item">
-                            <div class="todo-checkbox ${todo.completed ? 'checked' : ''}" onclick="toggleTodo(${todo.id})">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            </div>
-                            <div class="todo-text ${todo.completed ? 'completed' : ''}">${todo.text}</div>
-                            <button class="delete-button" onclick="deleteTodo(${todo.id})">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                            </button>
-                        </div>
-                    `;
+            const del = (date, id) => {
+                setTodos(prev => {
+                    const updated = {...prev, [date]: prev[date].filter(t => t.id !== id)};
+                    if (!updated[date].length) delete updated[date];
+                    return updated;
                 });
-            }
-            
-            document.getElementById('todo-list').innerHTML = html;
-        }
+            };
 
-        function prevMonth() {
-            currentMonth = currentMonth > 0 ? currentMonth - 1 : 11;
-            renderCalendar();
-            document.getElementById('month-title').textContent = `2026년 ${months[currentMonth]}`;
-        }
-
-        function nextMonth() {
-            currentMonth = currentMonth < 11 ? currentMonth + 1 : 0;
-            renderCalendar();
-            document.getElementById('month-title').textContent = `2026년 ${months[currentMonth]}`;
-        }
-
-        // Initial render
-        document.getElementById('root').innerHTML = `
-            <div class="container">
-                <div class="header">
-                    <button class="nav-button" onclick="prevMonth()">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                    </button>
-                    <h1 id="month-title">2026년 ${months[currentMonth]}</h1>
-                    <button class="nav-button" onclick="nextMonth()">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="legend">
-                    <div class="legend-item">
-                        <span>🇰🇷</span>
-                        <span>한국 공휴일</span>
-                    </div>
-                    <div class="legend-item">
-                        <span>🇵🇭</span>
-                        <span>필리핀 공휴일</span>
-                    </div>
-                    <div class="legend-item">
-                        <span>📝</span>
-                        <span>날짜 클릭하여 할 일 추가</span>
-                    </div>
-                </div>
-                
-                <div class="calendar">
-                    <div class="calendar-header">
-                        ${daysOfWeek.map((day, i) => `<div class="calendar-header-day ${i === 0 ? 'sunday' : ''}">${day}</div>`).join('')}
-                    </div>
-                    <div class="calendar-grid" id="calendar-grid"></div>
-                </div>
-            </div>
-            
-            <div class="modal" id="modal" onclick="if(event.target === this) closeModal()">
-                <div class="modal-content">
-                    <button class="close-button" onclick="closeModal()">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                    <div class="modal-header">
-                        <div class="modal-title" id="modal-title"></div>
-                        <div class="modal-holidays" id="modal-holidays"></div>
-                    </div>
-                    <div class="modal-body">
-                        <div class="todo-input-container">
-                            <input type="text" id="todo-input" class="todo-input" placeholder="새 할 일을 입력하세요" onkeypress="if(event.key==='Enter') addTodo()">
-                            <button class="add-button" onclick="addTodo()">추가</button>
+            const renderCal = () => {
+                const cells = [];
+                for (let i = 0; i < first(month); i++) cells.push(<div key={`e${i}`}/>);
+                for (let d = 1; d <= days(month); d++) {
+                    const date = fmt(2026, month, d);
+                    const dow = new Date(2026, month, d).getDay();
+                    const kr = koreanHolidays[date];
+                    const ph = philippineHolidays[date];
+                    const red = dow === 0 || kr || ph;
+                    const today = new Date().toDateString() === new Date(2026, month, d).toDateString();
+                    const pending = (todos[date] || []).filter(t => !t.done).length;
+                    cells.push(
+                        <div key={d} onClick={() => setModal(date)} className={`min-h-20 p-2 border border-gray-200 cursor-pointer hover:bg-gray-50 ${today?'bg-blue-50':''}`}>
+                            <div className={`text-sm font-medium ${red?'text-red-600':''}`}>{d}</div>
+                            {kr && <div className="text-xs text-red-600 hidden sm:block">{kr}</div>}
+                            {ph && <div className="text-xs text-red-600 hidden sm:block">{ph}</div>}
+                            {pending > 0 && <div className="absolute bottom-1 right-1 bg-blue-500 text-white text-xs px-1 rounded">{pending}</div>}
                         </div>
-                        <div class="todo-list" id="todo-list"></div>
-                    </div>
-                </div>
-            </div>
-        `;
+                    );
+                }
+                return cells;
+            };
 
-        renderCalendar();
+            return (
+                <div className="max-w-7xl mx-auto p-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <button onClick={() => setMonth(m => m > 0 ? m - 1 : 11)} className="p-2 hover:bg-gray-100 rounded">←</button>
+                        <h1 className="text-2xl font-bold">2026년 {month + 1}월</h1>
+                        <button onClick={() => setMonth(m => m < 11 ? m + 1 : 0)} className="p-2 hover:bg-gray-100 rounded">→</button>
+                    </div>
+                    <div className="grid lg:grid-cols-[1fr_350px] gap-4">
+                        <div className="border rounded-lg overflow-hidden">
+                            <div className="grid grid-cols-7 bg-gray-100 border-b">
+                                {['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`p-2 text-center text-sm font-medium ${i===0?'text-red-600':''}`}>{d}</div>)}
+                            </div>
+                            <div className="grid grid-cols-7">{renderCal()}</div>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="border rounded-lg">
+                                <div className="p-3 bg-gray-50 border-b font-medium">이번 달 공휴일</div>
+                                <div className="p-3 max-h-96 overflow-y-auto">
+                                    {monthHolidays().length === 0 ? <p className="text-center text-gray-400 py-8">공휴일 없음</p> : monthHolidays().map(h => (
+                                        <div key={h.date} className="flex gap-3 py-2 border-b last:border-0">
+                                            <div className="text-2xl text-red-600 w-10 text-center">{h.day}</div>
+                                            <div className="flex-1">
+                                                {h.kr && <div className="text-sm">🇰🇷 {h.kr}</div>}
+                                                {h.ph && <div className="text-sm">🇵🇭 {h.ph}</div>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="border rounded-lg">
+                                <div className="p-3 bg-gray-50 border-b font-medium">이번 달 할 일</div>
+                                <div className="p-3 max-h-96 overflow-y-auto">
+                                    {Object.keys(monthTodos()).length === 0 ? <p className="text-center text-gray-400 py-8">할 일 없음</p> : Object.keys(monthTodos()).sort().map(date => (
+                                        <div key={date} className="mb-4">
+                                            <div className="font-medium text-sm mb-2 pb-1 border-b-2 border-blue-500">{date.split('-')[1]}월 {date.split('-')[2]}일</div>
+                                            {todos[date].map(t => (
+                                                <div key={t.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded mb-2">
+                                                    <div onClick={() => toggle(date, t.id)} className={`w-5 h-5 border-2 rounded cursor-pointer flex items-center justify-center ${t.done?'bg-blue-500 border-blue-500':'border-gray-300'}`}>
+                                                        {t.done && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>}
+                                                    </div>
+                                                    <span className={`flex-1 text-sm ${t.done?'line-through text-gray-400':''}`}>{t.text}</span>
+                                                    <button onClick={() => del(date, t.id)} className="text-red-500 hover:bg-red-50 p-1 rounded">×</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {modal && (
+                        <div onClick={(e) => e.target === e.currentTarget && setModal(null)} className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                            <div className="bg-white rounded-lg max-w-md w-full p-6">
+                                <div className="flex justify-between mb-4">
+                                    <h2 className="text-lg font-bold">{modal} 할 일</h2>
+                                    <button onClick={() => setModal(null)} className="text-2xl">×</button>
+                                </div>
+                                {(koreanHolidays[modal] || philippineHolidays[modal]) && (
+                                    <div className="text-sm text-red-600 mb-4">
+                                        {koreanHolidays[modal] && <div>🇰🇷 {koreanHolidays[modal]}</div>}
+                                        {philippineHolidays[modal] && <div>🇵🇭 {philippineHolidays[modal]}</div>}
+                                    </div>
+                                )}
+                                <div className="flex gap-2 mb-4">
+                                    <input value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && add()} placeholder="할 일 입력" className="flex-1 px-3 py-2 border rounded"/>
+                                    <button onClick={add} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">추가</button>
+                                </div>
+                                <div className="space-y-2 max-h-80 overflow-y-auto">
+                                    {(todos[modal] || []).length === 0 ? <p className="text-center text-gray-400 py-8">할 일 없음</p> : (todos[modal] || []).map(t => (
+                                        <div key={t.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                                            <div onClick={() => toggle(modal, t.id)} className={`w-5 h-5 border-2 rounded cursor-pointer flex items-center justify-center ${t.done?'bg-blue-500 border-blue-500':'border-gray-300'}`}>
+                                                {t.done && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>}
+                                            </div>
+                                            <span className={`flex-1 ${t.done?'line-through text-gray-400':''}`}>{t.text}</span>
+                                            <button onClick={() => del(modal, t.id)} className="text-red-500">×</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 </html>
