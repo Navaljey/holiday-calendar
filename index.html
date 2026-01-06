@@ -3,26 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="KR-PH 달력" />
   <title>2026 한국-필리핀 공휴일 달력</title>
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Custom Ghibli-like theme -->
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            ghibliSky: "#E8F4FF",
-            ghibliGrass: "#EAF7E1",
-            ghibliPaper: "#FFFDF8",
-            ghibliAccent: "#6DBE9A",
+            ghibliSky: "#EAF4FF",
+            ghibliGrass: "#ECF7E7",
+            ghibliPaper: "#FFFDF6",
           },
           boxShadow: {
-            ghibli: "0 10px 25px rgba(0,0,0,0.08)",
+            ghibli: "0 12px 30px rgba(0,0,0,0.08)",
           },
           borderRadius: {
             ghibli: "1.25rem",
@@ -33,164 +28,43 @@
   </script>
 </head>
 
-<body class="min-h-screen bg-gradient-to-b from-ghibliSky via-ghibliGrass to-amber-50 font-serif text-gray-700">
+<body class="min-h-screen bg-gradient-to-b from-ghibliSky via-ghibliGrass to-amber-50 font-serif">
   <div id="root"></div>
 
-  <!-- React -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState } = React;
 
     const koreanHolidays = {
       "2026-01-01": "신정",
-      "2026-02-16": "설날 전날",
       "2026-02-17": "설날",
-      "2026-02-18": "설날 다음날",
       "2026-03-01": "삼일절",
       "2026-05-05": "어린이날",
-      "2026-05-24": "석가탄신일",
-      "2026-06-06": "현충일",
       "2026-08-15": "광복절",
-      "2026-09-25": "추석",
       "2026-10-09": "한글날",
       "2026-12-25": "크리스마스",
     };
 
     const philippineHolidays = {
       "2026-01-01": "New Year's Day",
-      "2026-02-17": "Chinese New Year",
-      "2026-04-09": "Day of Valor",
       "2026-06-12": "Independence Day (Philippines)",
       "2026-08-21": "Ninoy Aquino Day",
-      "2026-08-31": "National Heroes' Day (Philippines)",
       "2026-11-30": "Bonifacio Day",
       "2026-12-25": "Christmas Day",
-      "2026-12-30": "Rizal Day",
     };
 
-    const getKoreanWikiLink = (name) =>
-      `https://ko.wikipedia.org/wiki/${encodeURIComponent(name)}`;
+    const getKoreanWiki = (n) =>
+      `https://ko.wikipedia.org/wiki/${encodeURIComponent(n)}`;
 
-    const getPhilippineWikiLink = (name) =>
-      `https://en.wikipedia.org/wiki/${encodeURIComponent(name)}`;
+    const getPhilippineWiki = (n) =>
+      `https://en.wikipedia.org/wiki/${encodeURIComponent(n)}`;
 
     const App = () => {
-      const [modal, setModal] = useState(null);
-      const [todos, setTodos] = useState({});
-      const [input, setInput] = useState("");
+      const [month, setMonth] = useState(0);
+      const year = 2026;
 
-      useEffect(() => {
-        const saved = localStorage.getItem("todos");
-        if (saved) setTodos(JSON.parse(saved));
-      }, []);
+      const daysInMonth = (m) => new Date(year, m + 1, 0).getDate();
 
-      useEffect(() => {
-        localStorage.setItem("todos", JSON.stringify(todos));
-      }, [todos]);
-
-      const addTodo = () => {
-        if (!input.trim()) return;
-        setTodos({
-          ...todos,
-          [modal]: [...(todos[modal] || []), { id: Date.now(), text: input, done: false }],
-        });
-        setInput("");
-      };
-
-      return (
-        <div className="max-w-2xl mx-auto p-6">
-          <h1 className="text-3xl text-center mb-6 font-bold text-emerald-700">
-            🌿 2026 한국 · 필리핀 공휴일 달력
-          </h1>
-
-          <div className="bg-ghibliPaper rounded-ghibli shadow-ghibli p-6">
-            <p className="text-center text-sm text-gray-500 mb-4">
-              날짜를 클릭하면 할 일을 추가할 수 있어요
-            </p>
-
-            <div className="grid grid-cols-3 gap-3">
-              {Object.keys({ ...koreanHolidays, ...philippineHolidays }).map((date) => (
-                <button
-                  key={date}
-                  onClick={() => setModal(date)}
-                  className="bg-white/70 hover:bg-white rounded-ghibli p-3 shadow text-sm"
-                >
-                  {date}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {modal && (
-            <div
-              className="fixed inset-0 bg-black/40 flex items-center justify-center"
-              onClick={(e) => e.target === e.currentTarget && setModal(null)}
-            >
-              <div className="bg-ghibliPaper rounded-ghibli shadow-ghibli p-6 w-full max-w-md">
-                <h2 className="text-xl font-bold mb-3">{modal}</h2>
-
-                {(koreanHolidays[modal] || philippineHolidays[modal]) && (
-                  <div className="mb-4 text-sm space-y-1">
-                    {koreanHolidays[modal] && (
-                      <div>
-                        🇰🇷{" "}
-                        <a
-                          href={getKoreanWikiLink(koreanHolidays[modal])}
-                          target="_blank"
-                          className="text-emerald-700 underline"
-                        >
-                          {koreanHolidays[modal]}
-                        </a>
-                      </div>
-                    )}
-                    {philippineHolidays[modal] && (
-                      <div>
-                        🇵🇭{" "}
-                        <a
-                          href={getPhilippineWikiLink(philippineHolidays[modal])}
-                          target="_blank"
-                          className="text-emerald-700 underline"
-                        >
-                          {philippineHolidays[modal]}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex gap-2 mb-3">
-                  <input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    className="flex-1 border rounded-full px-4 py-2"
-                    placeholder="할 일 입력"
-                  />
-                  <button
-                    onClick={addTodo}
-                    className="bg-ghibliAccent text-white px-4 rounded-full"
-                  >
-                    추가
-                  </button>
-                </div>
-
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {(todos[modal] || []).map((t) => (
-                    <div key={t.id} className="bg-white/70 p-2 rounded-ghibli text-sm">
-                      {t.text}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    };
-
-    ReactDOM.render(<App />, document.getElementById("root"));
-  </script>
-</body>
-</html>
