@@ -1,174 +1,190 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>2026 한국-필리핀 공휴일 달력</title>
-
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Ghibli-style Tailwind Extension -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            sky: "#EAF4FF",
-            grass: "#EAF7E1",
-            paper: "#FFFDF8",
-          },
-          boxShadow: {
-            soft: "0 8px 20px rgba(0,0,0,0.08)",
-          },
-          borderRadius: {
-            xl2: "1.25rem",
-          },
-        },
-      },
-    };
-  </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="KR-PH 달력">
+    <title>2026 한국-필리핀 공휴일 달력</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
+<body class="bg-white">
+    <div id="root"></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-<body class="min-h-screen bg-gradient-to-b from-sky via-grass to-amber-50 font-serif text-gray-700">
-  <div id="root"></div>
+        const koreanHolidays = {'2026-01-01':'신정','2026-01-17':'OFF 토요일','2026-01-24':'OFF 토요일','2026-01-31':'OFF 토요일','2026-02-14':'OFF 토요일','2026-02-16':'설날 전날','2026-02-17':'설날','2026-02-18':'설날 다음날','2026-02-28':'OFF 토요일','2026-03-01':'삼일절','2026-03-02':'삼일절 대체공휴일','2026-03-14':'OFF 토요일','2026-03-28':'OFF 토요일','2026-04-11':'OFF 토요일','2026-04-25':'OFF 토요일','2026-05-05':'어린이날','2026-05-09':'OFF 토요일','2026-05-23':'OFF 토요일','2026-05-24':'석가탄신일','2026-05-26':'석가탄신일 대체공휴일','2026-06-06':'현충일','2026-06-20':'OFF 토요일','2026-07-04':'OFF 토요일','2026-07-17':'제헌절','2026-07-18':'OFF 토요일','2026-08-01':'OFF 토요일','2026-08-15':'광복절','2026-08-29':'OFF 토요일','2026-09-12':'OFF 토요일','2026-09-24':'추석 전날','2026-09-25':'추석','2026-09-26':'추석 다음날','2026-10-03':'개천절','2026-10-06':'개천절 대체공휴일','2026-10-09':'한글날','2026-10-10':'OFF 토요일','2026-10-24':'OFF 토요일','2026-11-07':'OFF 토요일','2026-11-21':'OFF 토요일','2026-12-05':'OFF 토요일','2026-12-19':'OFF 토요일','2026-12-25':'크리스마스'};
+        const philippineHolidays = {'2026-01-01':"New Year's Day",'2026-02-17':'Chinese New Year','2026-04-02':'Maundy Thursday','2026-04-03':'Good Friday','2026-04-04':'Black Saturday','2026-04-09':'Araw ng Kagitingan','2026-05-01':'Labor Day','2026-06-12':'Independence Day','2026-08-21':'Ninoy Aquino Day','2026-08-31':"National Heroes' Day",'2026-11-01':"All Saints' Day",'2026-11-02':"All Souls' Day",'2026-11-30':'Bonifacio Day','2026-12-08':'Immaculate Conception','2026-12-24':'Christmas Eve','2026-12-25':'Christmas Day','2026-12-30':'Rizal Day','2026-12-31':'Last Day of the Year'};
 
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+        const App = () => {
+            const [month, setMonth] = useState(new Date().getMonth());
+            const [todos, setTodos] = useState({});
+            const [modal, setModal] = useState(null);
+            const [input, setInput] = useState('');
 
-  <script type="text/babel">
-    const { useState } = React;
+            useEffect(() => {
+                const saved = localStorage.getItem('todos');
+                if (saved) setTodos(JSON.parse(saved));
+            }, []);
 
-    const koreanHolidays = {
-      "2026-01-01": "신정",
-      "2026-02-17": "설날",
-      "2026-03-01": "삼일절",
-      "2026-05-05": "어린이날",
-      "2026-08-15": "광복절",
-      "2026-10-09": "한글날",
-      "2026-12-25": "크리스마스",
-    };
+            useEffect(() => {
+                localStorage.setItem('todos', JSON.stringify(todos));
+            }, [todos]);
 
-    const philippineHolidays = {
-      "2026-01-01": "New Year's Day",
-      "2026-06-12": "Independence Day (Philippines)",
-      "2026-12-30": "Rizal Day",
-    };
+            const fmt = (y, m, d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const days = (m) => new Date(2026, m+1, 0).getDate();
+            const first = (m) => new Date(2026, m, 1).getDay();
 
-    const getKoreanWiki = (name) =>
-      `https://ko.wikipedia.org/wiki/${encodeURIComponent(name)}`;
-    const getPhilippineWiki = (name) =>
-      `https://en.wikipedia.org/wiki/${encodeURIComponent(name)}`;
+            const monthHolidays = () => {
+                const h = [];
+                for (let d = 1; d <= days(month); d++) {
+                    const date = fmt(2026, month, d);
+                    if (koreanHolidays[date] || philippineHolidays[date]) {
+                        h.push({date, day: d, kr: koreanHolidays[date], ph: philippineHolidays[date]});
+                    }
+                }
+                return h;
+            };
 
-    const App = () => {
-      const [month, setMonth] = useState(0);
-      const year = 2026;
+            const monthTodos = () => {
+                const t = {};
+                for (let d = 1; d <= days(month); d++) {
+                    const date = fmt(2026, month, d);
+                    if (todos[date]?.length) t[date] = todos[date];
+                }
+                return t;
+            };
 
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const firstDay = new Date(year, month, 1).getDay();
+            const add = () => {
+                if (!input.trim()) return;
+                setTodos(prev => ({...prev, [modal]: [...(prev[modal] || []), {id: Date.now(), text: input, done: false}]}));
+                setInput('');
+            };
 
-      const fmt = (d) =>
-        `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const toggle = (date, id) => {
+                setTodos(prev => ({...prev, [date]: prev[date].map(t => t.id === id ? {...t, done: !t.done} : t)}));
+            };
 
-      const weeks = [];
-      let day = 1 - firstDay;
-      while (day <= daysInMonth) {
-        weeks.push(
-          Array.from({ length: 7 }, () => (day > 0 && day <= daysInMonth ? day++ : day++ && null))
-        );
-      }
+            const del = (date, id) => {
+                setTodos(prev => {
+                    const updated = {...prev, [date]: prev[date].filter(t => t.id !== id)};
+                    if (!updated[date].length) delete updated[date];
+                    return updated;
+                });
+            };
 
-      return (
-        <div className="max-w-5xl mx-auto p-6">
-          <h1 className="text-3xl text-center mb-6 font-bold text-emerald-700">
-            🌿 2026 한국 · 필리핀 달력
-          </h1>
+            const renderCal = () => {
+                const cells = [];
+                for (let i = 0; i < first(month); i++) cells.push(<div key={`e${i}`}/>);
+                for (let d = 1; d <= days(month); d++) {
+                    const date = fmt(2026, month, d);
+                    const dow = new Date(2026, month, d).getDay();
+                    const kr = koreanHolidays[date];
+                    const ph = philippineHolidays[date];
+                    const red = dow === 0 || kr || ph;
+                    const today = new Date().toDateString() === new Date(2026, month, d).toDateString();
+                    const pending = (todos[date] || []).filter(t => !t.done).length;
+                    cells.push(
+                        <div key={d} onClick={() => setModal(date)} className={`min-h-20 p-2 border border-gray-200 cursor-pointer hover:bg-gray-50 ${today?'bg-blue-50':''}`}>
+                            <div className={`text-sm font-medium ${red?'text-red-600':''}`}>{d}</div>
+                            {kr && <div className="text-xs text-red-600 hidden sm:block">{kr}</div>}
+                            {ph && <div className="text-xs text-red-600 hidden sm:block">{ph}</div>}
+                            {pending > 0 && <div className="absolute bottom-1 right-1 bg-blue-500 text-white text-xs px-1 rounded">{pending}</div>}
+                        </div>
+                    );
+                }
+                return cells;
+            };
 
-          <div className="flex justify-between items-center mb-4">
-            <button
-              onClick={() => setMonth((m) => (m + 11) % 12)}
-              className="px-4 py-2 bg-white rounded-xl shadow-soft"
-            >
-              ◀
-            </button>
-            <div className="text-xl font-semibold">
-              {month + 1}월
-            </div>
-            <button
-              onClick={() => setMonth((m) => (m + 1) % 12)}
-              className="px-4 py-2 bg-white rounded-xl shadow-soft"
-            >
-              ▶
-            </button>
-          </div>
-
-          <div className="bg-paper rounded-xl shadow-soft p-4">
-            <div className="grid grid-cols-7 text-center font-semibold mb-2">
-              {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
-                <div key={i} className={i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : ""}>
-                  {d}
-                </div>
-              ))}
-            </div>
-
-            {weeks.map((week, i) => (
-              <div key={i} className="grid grid-cols-7 text-center">
-                {week.map((d, j) => {
-                  if (!d) return <div key={j} className="h-20"></div>;
-                  const date = fmt(d);
-                  const isSun = j === 0;
-                  const isSat = j === 6;
-                  const isHoliday =
-                    koreanHolidays[date] || philippineHolidays[date];
-
-                  return (
-                    <div
-                      key={j}
-                      className="h-20 border border-gray-100 p-1 rounded-xl hover:bg-white/70"
-                    >
-                      <div
-                        className={`text-sm font-bold ${
-                          isHoliday || isSun
-                            ? "text-red-500"
-                            : isSat
-                            ? "text-blue-500"
-                            : ""
-                        }`}
-                      >
-                        {d}
-                      </div>
-
-                      {koreanHolidays[date] && (
-                        <a
-                          href={getKoreanWiki(koreanHolidays[date])}
-                          target="_blank"
-                          className="block text-xs text-red-500 truncate"
-                        >
-                          🇰🇷 {koreanHolidays[date]}
-                        </a>
-                      )}
-
-                      {philippineHolidays[date] && (
-                        <a
-                          href={getPhilippineWiki(philippineHolidays[date])}
-                          target="_blank"
-                          className="block text-xs text-red-500 truncate"
-                        >
-                          🇵🇭 {philippineHolidays[date]}
-                        </a>
-                      )}
+            return (
+                <div className="max-w-7xl mx-auto p-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <button onClick={() => setMonth(m => m > 0 ? m - 1 : 11)} className="p-2 hover:bg-gray-100 rounded">←</button>
+                        <h1 className="text-2xl font-bold">2026년 {month + 1}월</h1>
+                        <button onClick={() => setMonth(m => m < 11 ? m + 1 : 0)} className="p-2 hover:bg-gray-100 rounded">→</button>
                     </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    };
+                    <div className="grid lg:grid-cols-[1fr_350px] gap-4">
+                        <div className="border rounded-lg overflow-hidden">
+                            <div className="grid grid-cols-7 bg-gray-100 border-b">
+                                {['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`p-2 text-center text-sm font-medium ${i===0?'text-red-600':''}`}>{d}</div>)}
+                            </div>
+                            <div className="grid grid-cols-7">{renderCal()}</div>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="border rounded-lg">
+                                <div className="p-3 bg-gray-50 border-b font-medium">이번 달 공휴일</div>
+                                <div className="p-3 max-h-96 overflow-y-auto">
+                                    {monthHolidays().length === 0 ? <p className="text-center text-gray-400 py-8">공휴일 없음</p> : monthHolidays().map(h => (
+                                        <div key={h.date} className="flex gap-3 py-2 border-b last:border-0">
+                                            <div className="text-2xl text-red-600 w-10 text-center">{h.day}</div>
+                                            <div className="flex-1">
+                                                {h.kr && <div className="text-sm">🇰🇷 {h.kr}</div>}
+                                                {h.ph && <div className="text-sm">🇵🇭 {h.ph}</div>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="border rounded-lg">
+                                <div className="p-3 bg-gray-50 border-b font-medium">이번 달 할 일</div>
+                                <div className="p-3 max-h-96 overflow-y-auto">
+                                    {Object.keys(monthTodos()).length === 0 ? <p className="text-center text-gray-400 py-8">할 일 없음</p> : Object.keys(monthTodos()).sort().map(date => (
+                                        <div key={date} className="mb-4">
+                                            <div className="font-medium text-sm mb-2 pb-1 border-b-2 border-blue-500">{date.split('-')[1]}월 {date.split('-')[2]}일</div>
+                                            {todos[date].map(t => (
+                                                <div key={t.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded mb-2">
+                                                    <div onClick={() => toggle(date, t.id)} className={`w-5 h-5 border-2 rounded cursor-pointer flex items-center justify-center ${t.done?'bg-blue-500 border-blue-500':'border-gray-300'}`}>
+                                                        {t.done && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>}
+                                                    </div>
+                                                    <span className={`flex-1 text-sm ${t.done?'line-through text-gray-400':''}`}>{t.text}</span>
+                                                    <button onClick={() => del(date, t.id)} className="text-red-500 hover:bg-red-50 p-1 rounded">×</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {modal && (
+                        <div onClick={(e) => e.target === e.currentTarget && setModal(null)} className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                            <div className="bg-white rounded-lg max-w-md w-full p-6">
+                                <div className="flex justify-between mb-4">
+                                    <h2 className="text-lg font-bold">{modal} 할 일</h2>
+                                    <button onClick={() => setModal(null)} className="text-2xl">×</button>
+                                </div>
+                                {(koreanHolidays[modal] || philippineHolidays[modal]) && (
+                                    <div className="text-sm text-red-600 mb-4">
+                                        {koreanHolidays[modal] && <div>🇰🇷 {koreanHolidays[modal]}</div>}
+                                        {philippineHolidays[modal] && <div>🇵🇭 {philippineHolidays[modal]}</div>}
+                                    </div>
+                                )}
+                                <div className="flex gap-2 mb-4">
+                                    <input value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && add()} placeholder="할 일 입력" className="flex-1 px-3 py-2 border rounded"/>
+                                    <button onClick={add} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">추가</button>
+                                </div>
+                                <div className="space-y-2 max-h-80 overflow-y-auto">
+                                    {(todos[modal] || []).length === 0 ? <p className="text-center text-gray-400 py-8">할 일 없음</p> : (todos[modal] || []).map(t => (
+                                        <div key={t.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                                            <div onClick={() => toggle(modal, t.id)} className={`w-5 h-5 border-2 rounded cursor-pointer flex items-center justify-center ${t.done?'bg-blue-500 border-blue-500':'border-gray-300'}`}>
+                                                {t.done && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>}
+                                            </div>
+                                            <span className={`flex-1 ${t.done?'line-through text-gray-400':''}`}>{t.text}</span>
+                                            <button onClick={() => del(modal, t.id)} className="text-red-500">×</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
 
-    ReactDOM.render(<App />, document.getElementById("root"));
-  </script>
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
 </body>
 </html>
-
