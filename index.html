@@ -153,12 +153,12 @@
                     const total = dayTodos.length;
                     const pending = dayTodos.filter(t => !t.done).length;
                     cells.push(
-                        <div key={d} onClick={() => setModal(date)} className={`min-h-20 p-2 border border-gray-200 cursor-pointer hover:bg-gray-50 ${today ? 'bg-blue-50' : ''}`}>
+                        <div key={d} onClick={() => setModal(date)} className={`relative min-h-20 p-2 border border-gray-200 cursor-pointer hover:bg-gray-50 ${today ? 'bg-blue-50' : ''}`}>
                             <div className={`text-sm font-medium ${red ? 'text-red-600' : ''}`}>{d}</div>
                             {kr && <div className="text-xs text-red-600 hidden sm:block truncate"><HolidayLink name={kr} country="KR" /></div>}
                             {ph && <div className="text-xs text-red-600 hidden sm:block truncate"><HolidayLink name={ph} country="PH" /></div>}
                             {total > 0 && (
-                                <div className="absolute bottom-1 right-1 bg-blue-500 text-white text-[10px] px-1 rounded shadow-sm">
+                                <div className="absolute bottom-1 right-1 bg-blue-500 text-white text-[10px] px-1 rounded shadow-sm pointer-events-none">
                                     {pending}/{total}
                                 </div>
                             )}
