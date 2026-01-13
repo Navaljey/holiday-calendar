@@ -1,22 +1,17 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="KR-PH 달력">
-    <title>2026 한국-필리핀 공휴일 달력</title>
+    <title>2026 한-필 달력 (최종 수정본)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap');
         body { font-family: 'Pretendard', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .calendar-cell { min-height: 85px; }
+        .calendar-cell { min-height: 80px; }
         @media (max-width: 640px) { .calendar-cell { min-height: 70px; } }
     </style>
 </head>
-
 <body class="bg-slate-50 text-slate-800">
     <div id="root"></div>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -25,7 +20,6 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // "OFF 토요일"을 "필리핀 공휴일"로 일괄 정의 변경
         const koreanHolidays = { '2026-01-01': '신정', '2026-01-17': '필리핀 공휴일', '2026-01-31': '필리핀 공휴일', '2026-02-14': '필리핀 공휴일', '2026-02-16': '설날 전날', '2026-02-17': '설날', '2026-02-18': '설날 다음날', '2026-02-28': '필리핀 공휴일', '2026-03-01': '삼일절', '2026-03-02': '삼일절 대체공휴일', '2026-03-14': '필리핀 공휴일', '2026-03-28': '필리핀 공휴일', '2026-04-11': '필리핀 공휴일', '2026-04-25': '필리핀 공휴일', '2026-05-05': '어린이날', '2026-05-09': '필리핀 공휴일', '2026-05-23': '필리핀 공휴일', '2026-05-24': '석가탄신일', '2026-05-26': '석가탄신일 대체공휴일', '2026-06-06': '현충일', '2026-06-20': '필리핀 공휴일', '2026-07-04': '필리핀 공휴일', '2026-07-17': '제헌절', '2026-07-18': '필리핀 공휴일', '2026-08-01': '필리핀 공휴일', '2026-08-15': '광복절', '2026-08-29': '필리핀 공휴일', '2026-09-12': '필리핀 공휴일', '2026-09-24': '추석 전날', '2026-09-25': '추석', '2026-09-26': '추석 다음날', '2026-10-03': '개천절', '2026-10-06': '개천절 대체공휴일', '2026-10-09': '한글날', '2026-10-10': '필리핀 공휴일', '2026-10-24': '필리핀 공휴일', '2026-11-07': '필리핀 공휴일', '2026-11-21': '필리핀 공휴일', '2026-12-05': '필리핀 공휴일', '2026-12-19': '필리핀 공휴일', '2026-12-25': '크리스마스' };
         const philippineHolidays = { '2026-01-01': "New Year's Day", '2026-02-17': 'Chinese New Year', '2026-03-20': 'Eid al-Fitr', '2026-04-02': 'Maundy Thursday', '2026-04-03': 'Good Friday', '2026-04-04': 'Black Saturday', '2026-04-09': 'Araw ng Kagitingan', '2026-05-01': 'Labor Day', '2026-05-27': 'Eid al-Adha', '2026-06-12': 'Independence Day', '2026-08-21': 'Ninoy Aquino Day', '2026-08-31': "National Heroes' Day", '2026-11-01': "All Saints' Day", '2026-11-02': "All Souls' Day", '2026-11-30': 'Bonifacio Day', '2026-12-08': 'Immaculate Conception', '2026-12-24': 'Christmas Eve', '2026-12-25': 'Christmas Day', '2026-12-30': 'Rizal Day', '2026-12-31': 'Last Day of the Year' };
 
@@ -35,12 +29,12 @@
             const [modal, setModal] = useState(null);
 
             useEffect(() => {
-                const saved = localStorage.getItem('todos');
+                const saved = localStorage.getItem('todos_v2');
                 if (saved) setTodos(JSON.parse(saved));
             }, []);
 
             useEffect(() => {
-                localStorage.setItem('todos', JSON.stringify(todos));
+                localStorage.setItem('todos_v2', JSON.stringify(todos));
             }, [todos]);
 
             const fmt = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -57,26 +51,23 @@
                     const kr = koreanHolidays[date];
                     const ph = philippineHolidays[date];
                     
-                    // 색상 조건: 한국공휴일(파란색), 필리핀 혹은 겹침(빨간색)
-                    let colorClass = "text-slate-600";
-                    if (dow === 0 || ph || (kr && ph)) colorClass = "text-rose-500";
-                    else if (kr) colorClass = "text-sky-500";
+                    // 디버깅: 색상 결정 로직 수정
+                    let colorClass = "text-slate-600"; // 기본 색상
+                    if (dow === 0 || ph) { 
+                        colorClass = "text-rose-500 font-bold"; // 일요일이나 필리핀 공휴일(혹은 겹침)은 빨간색
+                    } else if (kr) {
+                        colorClass = "text-sky-500 font-bold"; // 필리핀과 겹치지 않는 순수 한국 공휴일은 파란색
+                    }
 
-                    const today = new Date().toDateString() === new Date(2026, month, d).toDateString();
-                    const dayTodos = todos[date] || [];
+                    const today = new Date().toLocaleDateString() === new Date(2026, month, d).toLocaleDateString();
 
                     cells.push(
-                        <div key={d} onClick={() => setModal(date)} className={`calendar-cell relative p-2 border-[0.5px] border-slate-100 bg-white cursor-pointer active:bg-slate-50 transition-colors ${today ? 'bg-sky-50/50' : ''}`}>
-                            <div className={`text-sm font-bold mb-1 ${colorClass}`}>{d}</div>
-                            <div className="space-y-0.5">
-                                {kr && <div className={`text-[9px] px-1 rounded-sm truncate ${ph ? 'bg-rose-50 text-rose-600' : 'bg-sky-50 text-sky-600'}`}>{kr}</div>}
-                                {ph && <div className="text-[9px] px-1 bg-rose-50 text-rose-600 rounded-sm truncate">{ph}</div>}
+                        <div key={d} onClick={() => setModal(date)} className={`calendar-cell relative p-2 border-[0.5px] border-slate-100 bg-white cursor-pointer active:bg-slate-50 transition-colors ${today ? 'bg-amber-50' : ''}`}>
+                            <div className={`text-sm mb-1 ${colorClass}`}>{d}</div>
+                            <div className="space-y-0.5 overflow-hidden">
+                                {kr && <div className={`text-[9px] px-1 rounded-sm truncate leading-tight ${ph ? 'bg-rose-50 text-rose-600' : 'bg-sky-50 text-sky-600'}`}>{kr}</div>}
+                                {ph && <div className="text-[9px] px-1 bg-rose-50 text-rose-600 rounded-sm truncate leading-tight">{ph}</div>}
                             </div>
-                            {dayTodos.length > 0 && (
-                                <div className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-800 text-[9px] text-white">
-                                    {dayTodos.filter(t => !t.done).length || dayTodos.length}
-                                </div>
-                            )}
                         </div>
                     );
                 }
@@ -84,43 +75,24 @@
             };
 
             return (
-                <div className="max-w-md lg:max-w-5xl mx-auto p-3 sm:p-6 pb-20">
+                <div className="max-w-md mx-auto p-4 pb-20 bg-slate-50 min-h-screen">
                     <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                        <button onClick={() => setMonth(m => m > 0 ? m - 1 : 11)} className="p-2 text-slate-400">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        </button>
-                        <h1 className="text-xl font-bold tracking-tight">2026년 {month + 1}월</h1>
-                        <button onClick={() => setMonth(m => m < 11 ? m + 1 : 0)} className="p-2 text-slate-400">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        </button>
+                        <button onClick={() => setMonth(m => m > 0 ? m - 1 : 11)} className="p-2 text-slate-400">이전</button>
+                        <h1 className="text-lg font-bold">2026년 {month + 1}월</h1>
+                        <button onClick={() => setMonth(m => m < 11 ? m + 1 : 0)} className="p-2 text-slate-400">다음</button>
                     </div>
 
-                    <div className="grid lg:grid-cols-[1fr_320px] gap-6">
-                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                            <div className="grid grid-cols-7 bg-slate-50/50 py-3 border-b border-slate-100">
-                                {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-                                    <div key={d} className={`text-center text-[11px] font-bold ${i === 0 ? 'text-rose-400' : 'text-slate-400'}`}>{d}</div>
-                                ))}
-                            </div>
-                            <div className="grid grid-cols-7">{renderCal()}</div>
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="grid grid-cols-7 bg-slate-50/50 py-3 text-center border-b border-slate-100">
+                            {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+                                <div key={d} className={`text-[11px] font-bold ${i === 0 ? 'text-rose-400' : 'text-slate-400'}`}>{d}</div>
+                            ))}
                         </div>
-
-                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 h-fit">
-                            <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-                                <span className="w-1.5 h-4 bg-rose-400 rounded-full"></span>이달의 주요 일정
-                            </h3>
-                            <div className="space-y-4 max-h-[300px] overflow-y-auto hide-scrollbar">
-                                {getHolidays(month).length === 0 ? <p className="text-xs text-slate-400 text-center py-4">공휴일이 없는 달입니다.</p> : getHolidays(month).map(h => (
-                                    <div key={h.date} className="flex items-start gap-3">
-                                        <div className={`text-lg font-bold w-7 text-center leading-tight ${h.ph || new Date(h.date).getDay() === 0 ? 'text-rose-500' : 'text-sky-500'}`}>{h.day}</div>
-                                        <div className="flex-1 text-xs pt-1">
-                                            {h.kr && <div className={`${h.ph ? 'text-rose-600' : 'text-sky-600'} font-semibold mb-0.5 underline decoration-2 underline-offset-2`}>🇰🇷 {h.kr}</div>}
-                                            {h.ph && <div className="text-rose-600 font-semibold">🇵🇭 {h.ph}</div>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        <div className="grid grid-cols-7">{renderCal()}</div>
+                    </div>
+                    
+                    <div className="mt-6 p-4 bg-white rounded-2xl border border-slate-100">
+                        <p className="text-[10px] text-slate-400 text-center italic">한국 공휴일은 <span className="text-sky-500 font-bold">파란색</span>, 필리핀 공휴일/일요일은 <span className="text-rose-500 font-bold">빨간색</span>으로 표시됩니다.</p>
                     </div>
 
                     {modal && <Modal date={modal} onClose={() => setModal(null)} todos={todos} setTodos={setTodos} />}
@@ -130,42 +102,22 @@
 
         const Modal = ({ date, onClose, todos, setTodos }) => {
             const [text, setText] = useState('');
-            const add = () => {
-                if (!text.trim()) return;
-                setTodos(prev => ({ ...prev, [date]: [...(prev[date] || []), { id: Date.now(), text, done: false }] }));
-                setText('');
-            };
-            const toggle = (id) => setTodos(prev => ({ ...prev, [date]: prev[date].map(t => t.id === id ? { ...t, done: !t.done } : t) }));
-            const del = (id) => setTodos(prev => {
-                const updated = { ...prev, [date]: prev[date].filter(t => t.id !== id) };
-                if (!updated[date].length) delete updated[date];
-                return updated;
-            });
-
+            const add = () => { if(text.trim()){ setTodos(p => ({...p, [date]: [...(p[date]||[]), {id:Date.now(), text, done:false}]})); setText(''); }};
             return (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
-                    <div className="bg-white w-full max-w-md rounded-t-[32px] sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300" onClick={e => e.stopPropagation()}>
-                        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 sm:hidden" onClick={onClose}></div>
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end z-50" onClick={onClose}>
+                    <div className="bg-white w-full rounded-t-[32px] p-6 pb-12 animate-in slide-in-from-bottom duration-300" onClick={e=>e.stopPropagation()}>
+                        <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6" onClick={onClose}></div>
                         <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <h2 className="text-xl font-bold">{date.split('-')[1]}월 {date.split('-')[2]}일</h2>
-                                <p className="text-xs text-slate-400 mt-1">오늘의 할 일을 관리하세요</p>
-                            </div>
-                            <button onClick={onClose} className="p-2 bg-slate-50 rounded-full text-slate-400">✕</button>
+                            <h2 className="text-xl font-bold">{date}</h2>
+                            <button onClick={onClose} className="text-slate-400">닫기</button>
                         </div>
                         <div className="flex gap-2 mb-6">
-                            <input value={text} onChange={e => setText(e.target.value)} onKeyPress={e => e.key === 'Enter' && add()} placeholder="할 일 추가..." className="flex-1 bg-slate-50 border-none rounded-2xl px-4 py-3 text-sm outline-none ring-sky-100 focus:ring-2" />
-                            <button onClick={add} className="bg-slate-900 text-white px-5 rounded-2xl text-sm font-bold">추가</button>
+                            <input value={text} onChange={e=>setText(e.target.value)} onKeyPress={e=>e.key==='Enter'&&add()} placeholder="메모 입력" className="flex-1 bg-slate-50 rounded-xl px-4 py-3 outline-none" />
+                            <button onClick={add} className="bg-slate-900 text-white px-4 rounded-xl font-bold text-sm">추가</button>
                         </div>
-                        <div className="space-y-3 max-h-[40vh] overflow-y-auto">
-                            {(todos[date] || []).map(t => (
-                                <div key={t.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl">
-                                    <div onClick={() => toggle(t.id)} className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${t.done ? 'bg-sky-500 border-sky-500' : 'border-slate-300 bg-white'}`}>
-                                        {t.done && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                                    </div>
-                                    <span className={`flex-1 text-sm ${t.done ? 'text-slate-400 line-through' : 'text-slate-700 font-medium'}`}>{t.text}</span>
-                                    <button onClick={() => del(t.id)} className="text-slate-300 hover:text-rose-500 px-2 text-xl">×</button>
-                                </div>
+                        <div className="space-y-2 overflow-y-auto max-h-60">
+                            {(todos[date]||[]).map(t => (
+                                <div key={t.id} className="p-3 bg-slate-50 rounded-xl text-sm text-slate-700">{t.text}</div>
                             ))}
                         </div>
                     </div>
@@ -173,20 +125,7 @@
             );
         };
 
-        const getHolidays = (m) => {
-            const h = [];
-            const dCount = new Date(2026, m + 1, 0).getDate();
-            for (let d = 1; d <= dCount; d++) {
-                const date = `2026-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                if (koreanHolidays[date] || philippineHolidays[date]) {
-                    h.push({ date, day: d, kr: koreanHolidays[date], ph: philippineHolidays[date] });
-                }
-            }
-            return h;
-        };
-
         ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
-
 </html>
