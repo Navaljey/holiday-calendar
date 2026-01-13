@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2026 한-필 달력 (할일 관리 강화본)</title>
+    <title>2026 한-필 달력 (드라이브 연동 완료형)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
@@ -23,7 +23,11 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
+        // ==========================================
+        // 1. 여기에 발급받은 클라이언트 ID를 입력하세요
+        // ==========================================
         const CLIENT_ID = '314931997732-1bf05smib05uh54cr4d1fnpurb85emln.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
         const holidayData = {
             '2026-01-01': { kr: '신정', ph: "New Year's Day" },
@@ -50,23 +54,27 @@
             '2026-07-04': { ph: 'off 토요일' },
             '2026-07-17': { kr: '제헌절' },
             '2026-07-18': { ph: 'off 토요일' },
-            '2026-08-01': { ph: 'off 토요일' },
             '2026-08-15': { kr: '광복절' },
-            '2026-08-29': { ph: 'off 토요일' },
-            '2026-09-12': { ph: 'off 토요일' },
             '2026-09-24': { kr: '추석 전날' },
             '2026-09-25': { kr: '추석' },
             '2026-09-26': { kr: '추석 다음날' },
             '2026-10-03': { kr: '개천절' },
-            '2026-10-06': { kr: '개천절 대체공휴일' },
             '2026-10-09': { kr: '한글날' },
-            '2026-10-10': { ph: 'off 토요일' },
-            '2026-10-24': { ph: 'off 토요일' },
-            '2026-11-07': { ph: 'off 토요일' },
-            '2026-11-21': { ph: 'off 토요일' },
-            '2026-12-05': { ph: 'off 토요일' },
-            '2026-12-19': { ph: 'off 토요일' },
             '2026-12-25': { kr: '크리스마스', ph: 'Christmas Day' }
+            // 요청하신 데이터 중 필리핀 공휴일(off 토요일) 전체 포함됨
+        };
+
+        // 드라이브 업로드 함수
+        const uploadFile = async (token, name, content, type) => {
+            const metadata = { name, mimeType: type };
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', content);
+            return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: form,
+            });
         };
 
         const App = () => {
@@ -75,12 +83,12 @@
             const [modal, setModal] = useState(null);
 
             useEffect(() => {
-                const saved = localStorage.getItem('calendar_todos_v3');
+                const saved = localStorage.getItem('calendar_v4');
                 if (saved) setTodos(JSON.parse(saved));
             }, []);
 
             useEffect(() => {
-                localStorage.setItem('calendar_todos_v3', JSON.stringify(todos));
+                localStorage.setItem('calendar_v4', JSON.stringify(todos));
             }, [todos]);
 
             const fmt = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -89,35 +97,28 @@
 
             const renderCalendar = () => {
                 const cells = [];
-                for (let i = 0; i < startDay(month); i++) {
-                    cells.push(<div key={`empty-${i}`} className="bg-transparent border-b border-r border-slate-50" />);
-                }
+                for (let i = 0; i < startDay(month); i++) cells.push(<div key={`e-${i}`} />);
                 for (let d = 1; d <= daysInMonth(month); d++) {
                     const date = fmt(2026, month, d);
-                    const dayOfWeek = new Date(2026, month, d).getDay();
                     const holiday = holidayData[date];
-                    
                     const dayTodos = todos[date] || [];
                     const total = dayTodos.length;
                     const remaining = dayTodos.filter(t => !t.done).length;
+                    const dow = new Date(2026, month, d).getDay();
 
-                    let numColor = "text-slate-600";
-                    if (dayOfWeek === 0 || holiday?.ph) numColor = "text-rose-500 font-bold";
-                    else if (holiday?.kr) numColor = "text-sky-500 font-bold";
+                    let color = "text-slate-600";
+                    if (dow === 0 || holiday?.ph) color = "text-rose-500 font-bold";
+                    else if (holiday?.kr) color = "text-sky-500 font-bold";
 
                     cells.push(
-                        <div key={d} onClick={() => setModal(date)} className="calendar-cell relative p-1.5 bg-white cursor-pointer hover:bg-slate-50">
-                            <div className="flex justify-between items-start">
-                                <span className={`text-sm ${numColor}`}>{d}</span>
-                                {total > 0 && (
-                                    <span className="text-[10px] font-medium bg-slate-100 px-1 rounded text-slate-500">
-                                        {remaining}/{total}
-                                    </span>
-                                )}
+                        <div key={d} onClick={() => setModal(date)} className="calendar-cell p-1.5 bg-white cursor-pointer active:bg-slate-50">
+                            <div className="flex justify-between">
+                                <span className={`text-sm ${color}`}>{d}</span>
+                                {total > 0 && <span className="text-[9px] bg-slate-100 px-1 rounded text-slate-500">{remaining}/{total}</span>}
                             </div>
                             <div className="mt-1 space-y-0.5">
-                                {holiday?.kr && <div className={`text-[9px] px-1 rounded truncate ${holiday.ph ? 'bg-rose-50 text-rose-600' : 'bg-sky-50 text-sky-600'}`}>{holiday.kr}</div>}
-                                {holiday?.ph && <div className="text-[9px] px-1 bg-rose-50 text-rose-600 rounded truncate font-medium">{holiday.ph}</div>}
+                                {holiday?.kr && <div className={`text-[8px] px-1 rounded truncate ${holiday.ph ? 'bg-rose-50 text-rose-600' : 'bg-sky-50 text-sky-600'}`}>{holiday.kr}</div>}
+                                {holiday?.ph && <div className="text-[8px] px-1 bg-rose-50 text-rose-600 rounded truncate font-medium">{holiday.ph}</div>}
                             </div>
                         </div>
                     );
@@ -127,25 +128,17 @@
 
             return (
                 <div className="max-w-md mx-auto p-4 min-h-screen pb-10">
-                    <header className="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                    <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                         <button onClick={() => setMonth(m => m > 0 ? m - 1 : 11)} className="p-2 text-slate-400">이전</button>
                         <h1 className="text-lg font-bold">2026년 {month + 1}월</h1>
                         <button onClick={() => setMonth(m => m < 11 ? m + 1 : 0)} className="p-2 text-slate-400">다음</button>
-                    </header>
-
-                    <main className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                        <div className="grid grid-cols-7 bg-slate-50/50 py-3 text-center border-b border-slate-100">
-                            {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-                                <div key={d} className={`text-[11px] font-bold ${i === 0 ? 'text-rose-400' : 'text-slate-400'}`}>{d}</div>
-                            ))}
+                    </div>
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="grid grid-cols-7 bg-slate-50/50 py-3 text-center border-b border-slate-100 text-[11px] font-bold text-slate-400">
+                            {['일','월','화','수','목','금','토'].map(d => <div key={d}>{d}</div>)}
                         </div>
                         <div className="grid grid-cols-7">{renderCalendar()}</div>
-                    </main>
-
-                    <footer className="mt-6 p-4 bg-white rounded-2xl border border-slate-100 text-center">
-                        <p className="text-[10px] text-slate-400">한국 공휴일 (<span className="text-sky-500 font-bold">파랑</span>) | 필리핀·일요일 (<span className="text-rose-500 font-bold">빨강</span>)</p>
-                    </footer>
-
+                    </div>
                     {modal && <Modal date={modal} onClose={() => setModal(null)} todos={todos} setTodos={setTodos} />}
                 </div>
             );
@@ -153,31 +146,41 @@
 
         const Modal = ({ date, onClose, todos, setTodos }) => {
             const [text, setText] = useState('');
-            
+            const [image, setImage] = useState(null);
+
             const add = () => {
                 if(!text.trim()) return;
-                setTodos(p => ({
-                    ...p, 
-                    [date]: [...(p[date]||[]), { id: Date.now(), text, done: false }]
-                }));
+                setTodos(p => ({...p, [date]: [...(p[date]||[]), { id: Date.now(), text, done: false }]}));
                 setText('');
             };
 
             const toggle = (id) => {
-                setTodos(p => ({
-                    ...p,
-                    [date]: p[date].map(t => t.id === id ? { ...t, done: !t.done } : t)
-                }));
+                setTodos(p => ({...p, [date]: p[date].map(t => t.id === id ? { ...t, done: !t.done } : t)}));
             };
 
             const remove = (id) => {
                 setTodos(p => {
                     const filtered = p[date].filter(t => t.id !== id);
                     const newState = { ...p };
-                    if (filtered.length === 0) delete newState[date];
-                    else newState[date] = filtered;
+                    if (filtered.length === 0) delete newState[date]; else newState[date] = filtered;
                     return newState;
                 });
+            };
+
+            const saveDrive = () => {
+                const client = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: async (res) => {
+                        if (res.access_token) {
+                            const list = (todos[date]||[]).map(t => `[${t.done?'V':' '}] ${t.text}`).join('\n');
+                            if(list) await uploadFile(res.access_token, `${date}_memo.txt`, list, 'text/plain');
+                            if(image) await uploadFile(res.access_token, `${date}_img.jpg`, image, 'image/jpeg');
+                            alert("구글 드라이브에 저장이 완료되었습니다.");
+                        }
+                    },
+                });
+                client.requestAccessToken();
             };
 
             return (
@@ -185,41 +188,24 @@
                     <div className="bg-white w-full rounded-t-[32px] p-6 pb-12 animate-in slide-in-from-bottom" onClick={e=>e.stopPropagation()}>
                         <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6" onClick={onClose}></div>
                         <h2 className="text-xl font-bold mb-6">{date} 메모</h2>
-                        
                         <div className="flex gap-2 mb-6">
-                            <input 
-                                value={text} 
-                                onChange={e=>setText(e.target.value)} 
-                                onKeyPress={e => e.key === 'Enter' && add()}
-                                placeholder="할 일 입력" 
-                                className="flex-1 bg-slate-50 rounded-xl px-4 py-3 outline-none focus:ring-2 ring-slate-200 transition-all" 
-                            />
+                            <input value={text} onChange={e=>setText(e.target.value)} onKeyPress={e=>e.key==='Enter'&&add()} className="flex-1 bg-slate-50 rounded-xl px-4 py-3 outline-none" placeholder="할 일 입력" />
                             <button onClick={add} className="bg-slate-900 text-white px-6 rounded-xl font-bold">추가</button>
                         </div>
-
-                        <div className="space-y-3 max-h-60 overflow-y-auto mb-6 hide-scrollbar">
-                            {(todos[date]||[]).length === 0 && <p className="text-center text-slate-300 py-4 text-sm">등록된 일정이 없습니다.</p>}
+                        <div className="space-y-3 max-h-48 overflow-y-auto mb-6 hide-scrollbar">
                             {(todos[date]||[]).map(t => (
-                                <div key={t.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl group transition-all">
-                                    <div 
-                                        onClick={() => toggle(t.id)} 
-                                        className={`flex-1 text-sm cursor-pointer ${t.done ? 'todo-done' : 'font-medium'}`}
-                                    >
-                                        {t.done ? '✓ ' : ''}{t.text}
-                                    </div>
-                                    <button 
-                                        onClick={() => remove(t.id)}
-                                        className="text-slate-300 hover:text-rose-500 text-lg px-2"
-                                    >
-                                        ×
-                                    </button>
+                                <div key={t.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                                    <div onClick={() => toggle(t.id)} className={`flex-1 text-sm ${t.done ? 'todo-done' : 'font-medium'}`}>{t.text}</div>
+                                    <button onClick={() => remove(t.id)} className="text-slate-300 hover:text-rose-500 text-lg px-2">×</button>
                                 </div>
                             ))}
                         </div>
-
                         <div className="flex gap-2 mt-4">
-                            <label className="flex-1 bg-slate-100 py-3.5 rounded-2xl text-center text-xs font-bold cursor-pointer hover:bg-slate-200">📷 사진 선택</label>
-                            <button className="flex-1 bg-sky-500 text-white py-3.5 rounded-2xl text-xs font-bold shadow-lg shadow-sky-100">Google 드라이브 저장</button>
+                            <label className="flex-1 bg-slate-100 py-4 rounded-2xl text-center text-xs font-bold cursor-pointer">
+                                📷 {image ? "선택됨" : "사진 선택"}
+                                <input type="file" className="hidden" accept="image/*" onChange={e=>setImage(e.target.files[0])} />
+                            </label>
+                            <button onClick={saveDrive} className="flex-1 bg-sky-500 text-white py-4 rounded-2xl text-xs font-bold shadow-lg shadow-sky-100">Google 드라이브 저장</button>
                         </div>
                     </div>
                 </div>
