@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2026 한-필 달력 (드라이브 연동 완료형)</title>
+    <title>2026 한-필 달력</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
@@ -24,47 +24,73 @@
         const { useState, useEffect } = React;
 
         // ==========================================
-        // 1. 여기에 발급받은 클라이언트 ID를 입력하세요
+        // 구글 드라이브 클라이언트 ID (본인의 ID로 변경하세요)
         // ==========================================
         const CLIENT_ID = '314931997732-1bf05smib05uh54cr4d1fnpurb85emln.apps.googleusercontent.com';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
         const holidayData = {
             '2026-01-01': { kr: '신정', ph: "New Year's Day" },
-            '2026-01-17': { ph: 'off 토요일' },
-            '2026-01-31': { ph: 'off 토요일' },
-            '2026-02-14': { ph: 'off 토요일' },
+            '2026-01-17': { kr: 'OFF 토요일' },
+            '2026-01-31': { kr: 'OFF 토요일' },
+            '2026-02-14': { kr: 'OFF 토요일' },
             '2026-02-16': { kr: '설날 전날' },
             '2026-02-17': { kr: '설날', ph: 'Chinese New Year' },
             '2026-02-18': { kr: '설날 다음날' },
-            '2026-02-28': { ph: 'off 토요일' },
+            '2026-02-28': { kr: 'OFF 토요일' },
             '2026-03-01': { kr: '삼일절' },
             '2026-03-02': { kr: '삼일절 대체공휴일' },
-            '2026-03-14': { ph: 'off 토요일' },
-            '2026-03-28': { ph: 'off 토요일' },
-            '2026-04-11': { ph: 'off 토요일' },
-            '2026-04-25': { ph: 'off 토요일' },
+            '2026-03-14': { kr: 'OFF 토요일' },
+            '2026-03-20': { ph: 'Eid al-Fitr' },
+            '2026-03-28': { kr: 'OFF 토요일' },
+            '2026-04-02': { ph: 'Maundy Thursday' },
+            '2026-04-03': { ph: 'Good Friday' },
+            '2026-04-04': { ph: 'Black Saturday' },
+            '2026-04-09': { ph: 'Araw ng Kagitingan' },
+            '2026-04-11': { kr: 'OFF 토요일' },
+            '2026-04-25': { kr: 'OFF 토요일' },
+            '2026-05-01': { ph: 'Labor Day' },
             '2026-05-05': { kr: '어린이날' },
-            '2026-05-09': { ph: 'off 토요일' },
-            '2026-05-23': { ph: 'off 토요일' },
+            '2026-05-09': { kr: 'OFF 토요일' },
+            '2026-05-23': { kr: 'OFF 토요일' },
             '2026-05-24': { kr: '석가탄신일' },
             '2026-05-26': { kr: '석가탄신일 대체공휴일' },
+            '2026-05-27': { ph: 'Eid al-Adha' },
             '2026-06-06': { kr: '현충일' },
-            '2026-06-20': { ph: 'off 토요일' },
-            '2026-07-04': { ph: 'off 토요일' },
+            '2026-06-12': { ph: 'Independence Day' },
+            '2026-06-20': { kr: 'OFF 토요일' },
+            '2026-07-04': { kr: 'OFF 토요일' },
             '2026-07-17': { kr: '제헌절' },
-            '2026-07-18': { ph: 'off 토요일' },
+            '2026-07-18': { kr: 'OFF 토요일' },
+            '2026-08-01': { kr: 'OFF 토요일' },
             '2026-08-15': { kr: '광복절' },
+            '2026-08-21': { ph: 'Ninoy Aquino Day' },
+            '2026-08-29': { kr: 'OFF 토요일' },
+            '2026-08-31': { ph: "National Heroes' Day" },
+            '2026-09-12': { kr: 'OFF 토요일' },
             '2026-09-24': { kr: '추석 전날' },
             '2026-09-25': { kr: '추석' },
             '2026-09-26': { kr: '추석 다음날' },
             '2026-10-03': { kr: '개천절' },
+            '2026-10-06': { kr: '개천절 대체공휴일' },
             '2026-10-09': { kr: '한글날' },
-            '2026-12-25': { kr: '크리스마스', ph: 'Christmas Day' }
-            // 요청하신 데이터 중 필리핀 공휴일(off 토요일) 전체 포함됨
+            '2026-10-10': { kr: 'OFF 토요일' },
+            '2026-10-24': { kr: 'OFF 토요일' },
+            '2026-11-01': { ph: "All Saints' Day" },
+            '2026-11-02': { ph: "All Souls' Day" },
+            '2026-11-07': { kr: 'OFF 토요일' },
+            '2026-11-21': { kr: 'OFF 토요일' },
+            '2026-11-30': { ph: 'Bonifacio Day' },
+            '2026-12-05': { kr: 'OFF 토요일' },
+            '2026-12-08': { ph: 'Immaculate Conception' },
+            '2026-12-19': { kr: 'OFF 토요일' },
+            '2026-12-24': { ph: 'Christmas Eve' },
+            '2026-12-25': { kr: '크리스마스', ph: 'Christmas Day' },
+            '2026-12-30': { ph: 'Rizal Day' },
+            '2026-12-31': { ph: 'Last Day of the Year' }
         };
 
-        // 드라이브 업로드 함수
+        // 구글 드라이브 업로드 함수
         const uploadFile = async (token, name, content, type) => {
             const metadata = { name, mimeType: type };
             const form = new FormData();
@@ -78,22 +104,36 @@
         };
 
         const App = () => {
-            const [month, setMonth] = useState(new Date().getMonth());
+            const today = new Date();
+            const [month, setMonth] = useState(today.getMonth());
             const [todos, setTodos] = useState({});
             const [modal, setModal] = useState(null);
+            const [viewImage, setViewImage] = useState(null);
 
             useEffect(() => {
-                const saved = localStorage.getItem('calendar_v4');
+                const saved = localStorage.getItem('calendar_v5');
                 if (saved) setTodos(JSON.parse(saved));
             }, []);
 
             useEffect(() => {
-                localStorage.setItem('calendar_v4', JSON.stringify(todos));
+                localStorage.setItem('calendar_v5', JSON.stringify(todos));
             }, [todos]);
 
             const fmt = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const daysInMonth = (m) => new Date(2026, m + 1, 0).getDate();
             const startDay = (m) => new Date(2026, m, 1).getDay();
+
+            const monthTodos = () => {
+                const result = [];
+                for (let d = 1; d <= daysInMonth(month); d++) {
+                    const date = fmt(2026, month, d);
+                    const dayTodos = todos[date];
+                    if (dayTodos && dayTodos.length > 0) {
+                        result.push({ date, day: d, todos: dayTodos });
+                    }
+                }
+                return result;
+            };
 
             const renderCalendar = () => {
                 const cells = [];
@@ -105,19 +145,20 @@
                     const total = dayTodos.length;
                     const remaining = dayTodos.filter(t => !t.done).length;
                     const dow = new Date(2026, month, d).getDay();
+                    const isToday = today.getFullYear() === 2026 && today.getMonth() === month && today.getDate() === d;
 
                     let color = "text-slate-600";
                     if (dow === 0 || holiday?.ph) color = "text-rose-500 font-bold";
-                    else if (holiday?.kr) color = "text-sky-500 font-bold";
+                    else if (holiday?.kr && !holiday.kr.includes('OFF')) color = "text-sky-500 font-bold";
 
                     cells.push(
-                        <div key={d} onClick={() => setModal(date)} className="calendar-cell p-1.5 bg-white cursor-pointer active:bg-slate-50">
+                        <div key={d} onClick={() => setModal(date)} className={`calendar-cell p-1.5 ${isToday ? 'bg-sky-50' : 'bg-white'} cursor-pointer active:bg-slate-50`}>
                             <div className="flex justify-between">
-                                <span className={`text-sm ${color}`}>{d}</span>
+                                <span className={`text-sm ${color} ${isToday ? 'font-bold' : ''}`}>{d}</span>
                                 {total > 0 && <span className="text-[9px] bg-slate-100 px-1 rounded text-slate-500">{remaining}/{total}</span>}
                             </div>
                             <div className="mt-1 space-y-0.5">
-                                {holiday?.kr && <div className={`text-[8px] px-1 rounded truncate ${holiday.ph ? 'bg-rose-50 text-rose-600' : 'bg-sky-50 text-sky-600'}`}>{holiday.kr}</div>}
+                                {holiday?.kr && !holiday.kr.includes('OFF') && <div className={`text-[8px] px-1 rounded truncate ${holiday.ph ? 'bg-rose-50 text-rose-600' : 'bg-sky-50 text-sky-600'}`}>{holiday.kr}</div>}
                                 {holiday?.ph && <div className="text-[8px] px-1 bg-rose-50 text-rose-600 rounded truncate font-medium">{holiday.ph}</div>}
                             </div>
                         </div>
@@ -133,25 +174,96 @@
                         <h1 className="text-lg font-bold">2026년 {month + 1}월</h1>
                         <button onClick={() => setMonth(m => m < 11 ? m + 1 : 0)} className="p-2 text-slate-400">다음</button>
                     </div>
-                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
                         <div className="grid grid-cols-7 bg-slate-50/50 py-3 text-center border-b border-slate-100 text-[11px] font-bold text-slate-400">
                             {['일','월','화','수','목','금','토'].map(d => <div key={d}>{d}</div>)}
                         </div>
                         <div className="grid grid-cols-7">{renderCalendar()}</div>
                     </div>
-                    {modal && <Modal date={modal} onClose={() => setModal(null)} todos={todos} setTodos={setTodos} />}
+
+                    {monthTodos().length > 0 && (
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-6">
+                            <h2 className="text-lg font-bold mb-4">이번 달 할 일</h2>
+                            <div className="space-y-4 max-h-96 overflow-y-auto hide-scrollbar">
+                                {monthTodos().map(({ date, day, todos: dayTodos }) => (
+                                    <div key={date} className="border-b border-slate-100 pb-4 last:border-0">
+                                        <div className="text-sm font-bold text-slate-600 mb-2">{month + 1}월 {day}일</div>
+                                        <div className="space-y-2">
+                                            {dayTodos.map(t => (
+                                                <div key={t.id} className="flex items-start gap-2">
+                                                    <div className={`flex-1 text-sm ${t.done ? 'todo-done' : 'text-slate-700'}`}>{t.text}</div>
+                                                    {t.image && (
+                                                        <img 
+                                                            src={t.image} 
+                                                            alt="첨부" 
+                                                            className="w-12 h-12 rounded object-cover cursor-pointer hover:opacity-80"
+                                                            onClick={() => setViewImage(t.image)}
+                                                        />
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {modal && <Modal date={modal} onClose={() => setModal(null)} todos={todos} setTodos={setTodos} setViewImage={setViewImage} />}
+                    {viewImage && (
+                        <div onClick={() => setViewImage(null)} className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[60]">
+                            <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
+                                <button 
+                                    onClick={() => setViewImage(null)} 
+                                    className="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 z-10 bg-black/50 w-12 h-12 rounded-full flex items-center justify-center"
+                                >
+                                    ×
+                                </button>
+                                <img 
+                                    src={viewImage} 
+                                    alt="확대 보기" 
+                                    className="max-w-full max-h-full object-contain rounded-lg"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
 
-        const Modal = ({ date, onClose, todos, setTodos }) => {
+        const Modal = ({ date, onClose, todos, setTodos, setViewImage }) => {
             const [text, setText] = useState('');
             const [image, setImage] = useState(null);
+            const [imagePreview, setImagePreview] = useState(null);
+            const [imageFile, setImageFile] = useState(null);
+            const [editingId, setEditingId] = useState(null);
+            const [editText, setEditText] = useState('');
+
+            const handleImageChange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('사진 용량이 너무 큽니다. (2MB 이하 권장)');
+                        return;
+                    }
+                    setImageFile(file);
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setImage(reader.result);
+                        setImagePreview(reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
 
             const add = () => {
-                if(!text.trim()) return;
-                setTodos(p => ({...p, [date]: [...(p[date]||[]), { id: Date.now(), text, done: false }]}));
+                if(!text.trim() && !image) return;
+                setTodos(p => ({...p, [date]: [...(p[date]||[]), { id: Date.now(), text, done: false, image }]}));
                 setText('');
+                setImage(null);
+                setImagePreview(null);
+                setImageFile(null);
             };
 
             const toggle = (id) => {
@@ -167,16 +279,59 @@
                 });
             };
 
+            const startEdit = (todo) => {
+                setEditingId(todo.id);
+                setEditText(todo.text);
+            };
+
+            const saveEdit = (id) => {
+                if (!editText.trim()) {
+                    setEditingId(null);
+                    return;
+                }
+                setTodos(p => ({...p, [date]: p[date].map(t => t.id === id ? { ...t, text: editText } : t)}));
+                setEditingId(null);
+                setEditText('');
+            };
+
+            const cancelEdit = () => {
+                setEditingId(null);
+                setEditText('');
+            };
+
             const saveDrive = () => {
                 const client = google.accounts.oauth2.initTokenClient({
                     client_id: CLIENT_ID,
                     scope: SCOPES,
                     callback: async (res) => {
                         if (res.access_token) {
-                            const list = (todos[date]||[]).map(t => `[${t.done?'V':' '}] ${t.text}`).join('\n');
-                            if(list) await uploadFile(res.access_token, `${date}_memo.txt`, list, 'text/plain');
-                            if(image) await uploadFile(res.access_token, `${date}_img.jpg`, image, 'image/jpeg');
-                            alert("구글 드라이브에 저장이 완료되었습니다.");
+                            try {
+                                // 할 일 목록을 텍스트 파일로 저장
+                                const list = (todos[date] || []).map(t => `[${t.done ? 'V' : ' '}] ${t.text}`).join('\n');
+                                if (list) {
+                                    await uploadFile(res.access_token, `${date}_memo.txt`, list, 'text/plain');
+                                }
+                                
+                                // 현재 선택된 사진 파일이 있으면 저장
+                                if (imageFile) {
+                                    await uploadFile(res.access_token, `${date}_img.jpg`, imageFile, 'image/jpeg');
+                                }
+                                
+                                // 이미 저장된 할 일에 첨부된 사진들도 저장
+                                const todosWithImages = (todos[date] || []).filter(t => t.image);
+                                for (let i = 0; i < todosWithImages.length; i++) {
+                                    const todo = todosWithImages[i];
+                                    // Base64를 Blob으로 변환
+                                    const response = await fetch(todo.image);
+                                    const blob = await response.blob();
+                                    await uploadFile(res.access_token, `${date}_saved_img_${i + 1}.jpg`, blob, 'image/jpeg');
+                                }
+                                
+                                alert("구글 드라이브에 저장이 완료되었습니다.");
+                            } catch (error) {
+                                console.error('드라이브 저장 오류:', error);
+                                alert("저장 중 오류가 발생했습니다.");
+                            }
                         }
                     },
                 });
@@ -185,28 +340,72 @@
 
             return (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end z-50" onClick={onClose}>
-                    <div className="bg-white w-full rounded-t-[32px] p-6 pb-12 animate-in slide-in-from-bottom" onClick={e=>e.stopPropagation()}>
-                        <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6" onClick={onClose}></div>
+                    <div className="bg-white w-full rounded-t-[32px] p-6 pb-12 animate-in slide-in-from-bottom max-h-[85vh] overflow-y-auto hide-scrollbar" onClick={e=>e.stopPropagation()}>
+                        <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6 cursor-pointer" onClick={onClose}></div>
                         <h2 className="text-xl font-bold mb-6">{date} 메모</h2>
-                        <div className="flex gap-2 mb-6">
+                        <div className="flex gap-2 mb-4">
                             <input value={text} onChange={e=>setText(e.target.value)} onKeyPress={e=>e.key==='Enter'&&add()} className="flex-1 bg-slate-50 rounded-xl px-4 py-3 outline-none" placeholder="할 일 입력" />
                             <button onClick={add} className="bg-slate-900 text-white px-6 rounded-xl font-bold">추가</button>
                         </div>
-                        <div className="space-y-3 max-h-48 overflow-y-auto mb-6 hide-scrollbar">
+                        <div className="flex gap-2 mb-4">
+                            <label className="flex-1 bg-slate-100 py-3 rounded-2xl text-center text-xs font-bold cursor-pointer">
+                                📷 {imagePreview ? "선택됨" : "사진 선택"}
+                                <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+                            </label>
+                            {imagePreview && (
+                                <button onClick={() => { setImage(null); setImagePreview(null); setImageFile(null); }} className="bg-rose-100 text-rose-600 px-4 rounded-2xl text-xs font-bold">취소</button>
+                            )}
+                        </div>
+                        {imagePreview && (
+                            <div className="mb-4 w-full h-32 bg-slate-100 rounded-2xl overflow-hidden flex items-center justify-center">
+                                <img src={imagePreview} className="h-full object-contain" alt="미리보기" />
+                            </div>
+                        )}
+                        <div className="space-y-3 max-h-80 overflow-y-auto hide-scrollbar mb-6">
                             {(todos[date]||[]).map(t => (
-                                <div key={t.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                                    <div onClick={() => toggle(t.id)} className={`flex-1 text-sm ${t.done ? 'todo-done' : 'font-medium'}`}>{t.text}</div>
-                                    <button onClick={() => remove(t.id)} className="text-slate-300 hover:text-rose-500 text-lg px-2">×</button>
+                                <div key={t.id} className="p-3 bg-slate-50 rounded-xl">
+                                    {editingId === t.id ? (
+                                        <div className="space-y-2">
+                                            <input
+                                                value={editText}
+                                                onChange={(e) => setEditText(e.target.value)}
+                                                onKeyPress={(e) => e.key === 'Enter' && saveEdit(t.id)}
+                                                className="w-full px-3 py-2 bg-white rounded-lg text-sm outline-none border border-slate-200"
+                                                autoFocus
+                                            />
+                                            <div className="flex gap-2">
+                                                <button onClick={() => saveEdit(t.id)} className="flex-1 bg-slate-900 text-white py-2 rounded-lg text-xs font-bold">저장</button>
+                                                <button onClick={cancelEdit} className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg text-xs font-bold">취소</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-start gap-3">
+                                            <div onClick={() => toggle(t.id)} className="flex-1 cursor-pointer">
+                                                <div className={`text-sm ${t.done ? 'todo-done' : 'font-medium'}`}>{t.text}</div>
+                                                {t.image && (
+                                                    <img 
+                                                        src={t.image} 
+                                                        alt="첨부" 
+                                                        className="mt-2 h-20 w-auto rounded-lg object-cover cursor-pointer hover:opacity-80 border border-slate-200"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setViewImage(t.image);
+                                                        }}
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <button onClick={() => startEdit(t)} className="text-slate-400 hover:text-sky-500 text-sm px-1">✎</button>
+                                                <button onClick={() => remove(t.id)} className="text-slate-300 hover:text-rose-500 text-lg px-1">×</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
-                        <div className="flex gap-2 mt-4">
-                            <label className="flex-1 bg-slate-100 py-4 rounded-2xl text-center text-xs font-bold cursor-pointer">
-                                📷 {image ? "선택됨" : "사진 선택"}
-                                <input type="file" className="hidden" accept="image/*" onChange={e=>setImage(e.target.files[0])} />
-                            </label>
-                            <button onClick={saveDrive} className="flex-1 bg-sky-500 text-white py-4 rounded-2xl text-xs font-bold shadow-lg shadow-sky-100">Google 드라이브 저장</button>
-                        </div>
+                        <button onClick={saveDrive} className="w-full bg-sky-500 text-white py-4 rounded-2xl text-sm font-bold shadow-lg shadow-sky-100">
+                            💾 Google 드라이브에 저장
+                        </button>
                     </div>
                 </div>
             );
