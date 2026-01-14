@@ -115,11 +115,11 @@
             });
         };
 
-        // 구글 드라이브에서 파일 다운로드
+        // 구글 드라이브에서 파일 다운로드 (스트리밍 방식)
         const downloadFile = async (token, name) => {
             try {
                 const searchResponse = await fetch(
-                    `https://www.googleapis.com/drive/v3/files?q=name='${name}'&fields=files(id)`,
+                    `https://www.googleapis.com/drive/v3/files?q=name='${name}'&fields=files(id,size)`,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 const searchData = await searchResponse.json();
@@ -128,13 +128,27 @@
                     return null;
                 }
                 
-                const fileId = searchData.files[0].id;
+                const file = searchData.files[0];
+                const fileId = file.id;
+                const fileSize = file.size;
+                
+                // 파일 크기 체크 (10MB 이상이면 경고)
+                if (fileSize && fileSize > 10 * 1024 * 1024) {
+                    console.warn('파일이 너무 큽니다:', fileSize, 'bytes');
+                    return null;
+                }
+                
                 const downloadResponse = await fetch(
                     `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 
-                return await downloadResponse.text();
+                if (!downloadResponse.ok) {
+                    throw new Error('다운로드 실패');
+                }
+                
+                const text = await downloadResponse.text();
+                return text;
             } catch (error) {
                 console.error('파일 다운로드 오류:', error);
                 return null;
@@ -170,18 +184,43 @@
                             try {
                                 setSyncStatus('불러오는 중...');
                                 const data = await downloadFile(res.access_token, 'calendar_data.json');
-                                if (data) {
-                                    const parsedData = JSON.parse(data);
+                                
+                                if (!data) {
+                                    setSyncStatus('파일 없음');
+                                    setTimeout(() => setSyncStatus(''), 2000);
+                                    return;
+                                }
+                                
+                                // 데이터 크기 체크
+                                const dataSizeInMB = new Blob([data]).size / (1024 * 1024);
+                                console.log('데이터 크기:', dataSizeInMB.toFixed(2), 'MB');
+                                
+                                if (dataSizeInMB > 5) {
+                                    setSyncStatus('❌ 데이터가 너무 큽니다');
+                                    alert('저장된 데이터가 너무 커서 불러올 수 없습니다. 일부 사진을 삭제해주세요.');
+                                    setTimeout(() => setSyncStatus(''), 2000);
+                                    return;
+                                }
+                                
+                                // 조금씩 파싱 시도
+                                const parsedData = JSON.parse(data);
+                                
+                                // 데이터 개수 체크
+                                const totalTodos = Object.values(parsedData).reduce((sum, arr) => sum + arr.length, 0);
+                                console.log('총 할 일 개수:', totalTodos);
+                                
+                                // 상태 업데이트를 비동기로 처리
+                                setTimeout(() => {
                                     setTodos(parsedData);
                                     localStorage.setItem('calendar_v5', JSON.stringify(parsedData));
                                     setSyncStatus('✓ 동기화 완료');
                                     setTimeout(() => setSyncStatus(''), 2000);
-                                } else {
-                                    setSyncStatus('');
-                                }
+                                }, 100);
+                                
                             } catch (error) {
                                 console.error('데이터 파싱 오류:', error);
                                 setSyncStatus('❌ 불러오기 실패');
+                                alert('데이터를 불러오는 중 오류가 발생했습니다. 데이터가 손상되었을 수 있습니다.');
                                 setTimeout(() => setSyncStatus(''), 2000);
                             }
                         }
@@ -366,11 +405,11 @@
                     reader.onloadend = () => {
                         const img = new Image();
                         img.onload = () => {
-                            // 이미지 리사이징
+                            // 이미지 리사이징 (더 작게)
                             const canvas = document.createElement('canvas');
                             let width = img.width;
                             let height = img.height;
-                            const maxSize = 1200; // 최대 크기
+                            const maxSize = 800; // 최대 크기를 800px로 축소
                             
                             if (width > height && width > maxSize) {
                                 height = (height * maxSize) / width;
@@ -385,8 +424,13 @@
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0, width, height);
                             
-                            // 압축된 이미지 (JPEG 품질 0.7)
-                            const compressedImage = canvas.toDataURL('image/jpeg', 0.7);
+                            // 더 강한 압축 (JPEG 품질 0.6)
+                            const compressedImage = canvas.toDataURL('image/jpeg', 0.6);
+                            
+                            // 압축된 크기 확인
+                            const sizeInKB = (compressedImage.length * 0.75) / 1024;
+                            console.log('압축된 이미지 크기:', sizeInKB.toFixed(2), 'KB');
+                            
                             setImage(compressedImage);
                             setImagePreview(compressedImage);
                         };
