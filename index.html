@@ -135,8 +135,10 @@
                     const isToday = today.getFullYear() === 2026 && today.getMonth() === month && today.getDate() === d;
 
                     let color = "text-slate-600";
-                    if (dow === 0 || holiday?.ph) color = "text-rose-500 font-bold";
-                    else if (holiday?.kr) color = "text-sky-500 font-bold";
+                    if (dow === 0) color = "text-rose-500 font-bold";  // 일요일
+                    else if (dow === 6 && holiday?.ph) color = "text-rose-500 font-bold";  // OFF 토요일
+                    else if (holiday?.ph) color = "text-rose-500 font-bold";  // 필리핀 공휴일
+                    else if (holiday?.kr) color = "text-sky-500 font-bold";  // 한국 공휴일
 
                     cells.push(
                         <div key={d} onClick={() => setModal(date)} className={`calendar-cell p-1.5 ${isToday ? 'bg-sky-50' : 'bg-white'} cursor-pointer active:bg-slate-50`}>
