@@ -23,61 +23,71 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // ==========================================
-        // 구글 드라이브 클라이언트 ID (본인의 ID로 변경하세요)
-        // ==========================================
+        // 구글 드라이브 클라이언트 ID
         const CLIENT_ID = '314931997732-1bf05smib05uh54cr4d1fnpurb85emln.apps.googleusercontent.com';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
-': { kr: 'OFF 토요일' },
+        const holidayData = {
+            '2026-01-01': { kr: '신정', ph: "New Year's Day" },
+            '2026-01-17': { ph: 'OFF 토요일' },
+            '2026-01-31': { ph: 'OFF 토요일' },
+            '2026-02-14': { ph: 'OFF 토요일' },
+            '2026-02-16': { kr: '설날 전날' },
+            '2026-02-17': { kr: '설날', ph: 'Chinese New Year' },
+            '2026-02-18': { kr: '설날 다음날' },
+            '2026-02-28': { ph: 'OFF 토요일' },
+            '2026-03-01': { kr: '삼일절' },
+            '2026-03-02': { kr: '삼일절 대체공휴일' },
+            '2026-03-14': { ph: 'OFF 토요일' },
+            '2026-03-20': { ph: 'Eid al-Fitr' },
+            '2026-03-28': { ph: 'OFF 토요일' },
             '2026-04-02': { ph: 'Maundy Thursday' },
             '2026-04-03': { ph: 'Good Friday' },
             '2026-04-04': { ph: 'Black Saturday' },
             '2026-04-09': { ph: 'Araw ng Kagitingan' },
-            '2026-04-11': { kr: 'OFF 토요일' },
-            '2026-04-25': { kr: 'OFF 토요일' },
+            '2026-04-11': { ph: 'OFF 토요일' },
+            '2026-04-25': { ph: 'OFF 토요일' },
             '2026-05-01': { ph: 'Labor Day' },
             '2026-05-05': { kr: '어린이날' },
-            '2026-05-09': { kr: 'OFF 토요일' },
-            '2026-05-23': { kr: 'OFF 토요일' },
+            '2026-05-09': { ph: 'OFF 토요일' },
+            '2026-05-23': { ph: 'OFF 토요일' },
             '2026-05-24': { kr: '석가탄신일' },
             '2026-05-26': { kr: '석가탄신일 대체공휴일' },
             '2026-05-27': { ph: 'Eid al-Adha' },
             '2026-06-06': { kr: '현충일' },
             '2026-06-12': { ph: 'Independence Day' },
-            '2026-06-20': { kr: 'OFF 토요일' },
-            '2026-07-04': { kr: 'OFF 토요일' },
+            '2026-06-20': { ph: 'OFF 토요일' },
+            '2026-07-04': { ph: 'OFF 토요일' },
             '2026-07-17': { kr: '제헌절' },
-            '2026-07-18': { kr: 'OFF 토요일' },
-            '2026-08-01': { kr: 'OFF 토요일' },
+            '2026-07-18': { ph: 'OFF 토요일' },
+            '2026-08-01': { ph: 'OFF 토요일' },
             '2026-08-15': { kr: '광복절' },
             '2026-08-21': { ph: 'Ninoy Aquino Day' },
-            '2026-08-29': { kr: 'OFF 토요일' },
+            '2026-08-29': { ph: 'OFF 토요일' },
             '2026-08-31': { ph: "National Heroes' Day" },
-            '2026-09-12': { kr: 'OFF 토요일' },
+            '2026-09-12': { ph: 'OFF 토요일' },
             '2026-09-24': { kr: '추석 전날' },
             '2026-09-25': { kr: '추석' },
             '2026-09-26': { kr: '추석 다음날' },
             '2026-10-03': { kr: '개천절' },
             '2026-10-06': { kr: '개천절 대체공휴일' },
             '2026-10-09': { kr: '한글날' },
-            '2026-10-10': { kr: 'OFF 토요일' },
-            '2026-10-24': { kr: 'OFF 토요일' },
+            '2026-10-10': { ph: 'OFF 토요일' },
+            '2026-10-24': { ph: 'OFF 토요일' },
             '2026-11-01': { ph: "All Saints' Day" },
             '2026-11-02': { ph: "All Souls' Day" },
-            '2026-11-07': { kr: 'OFF 토요일' },
-            '2026-11-21': { kr: 'OFF 토요일' },
+            '2026-11-07': { ph: 'OFF 토요일' },
+            '2026-11-21': { ph: 'OFF 토요일' },
             '2026-11-30': { ph: 'Bonifacio Day' },
-            '2026-12-05': { kr: 'OFF 토요일' },
+            '2026-12-05': { ph: 'OFF 토요일' },
             '2026-12-08': { ph: 'Immaculate Conception' },
-            '2026-12-19': { kr: 'OFF 토요일' },
+            '2026-12-19': { ph: 'OFF 토요일' },
             '2026-12-24': { ph: 'Christmas Eve' },
             '2026-12-25': { kr: '크리스마스', ph: 'Christmas Day' },
             '2026-12-30': { ph: 'Rizal Day' },
             '2026-12-31': { ph: 'Last Day of the Year' }
         };
 
-        // 구글 드라이브 업로드 함수
         const uploadFile = async (token, name, content, type) => {
             const metadata = { name, mimeType: type };
             const form = new FormData();
@@ -134,11 +144,18 @@
                     const dow = new Date(2026, month, d).getDay();
                     const isToday = today.getFullYear() === 2026 && today.getMonth() === month && today.getDate() === d;
 
+                    // 색상 결정 로직
                     let color = "text-slate-600";
-                    if (dow === 0) color = "text-rose-500 font-bold";  // 일요일
-                    else if (dow === 6 && holiday?.ph) color = "text-rose-500 font-bold";  // OFF 토요일
-                    else if (holiday?.ph) color = "text-rose-500 font-bold";  // 필리핀 공휴일
-                    else if (holiday?.kr) color = "text-sky-500 font-bold";  // 한국 공휴일
+                    if (holiday?.ph) {
+                        // 필리핀 공휴일이 있으면 무조건 빨간색
+                        color = "text-rose-500 font-bold";
+                    } else if (dow === 0) {
+                        // 일요일
+                        color = "text-rose-500 font-bold";
+                    } else if (holiday?.kr) {
+                        // 한국 공휴일
+                        color = "text-sky-500 font-bold";
+                    }
 
                     cells.push(
                         <div key={d} onClick={() => setModal(date)} className={`calendar-cell p-1.5 ${isToday ? 'bg-sky-50' : 'bg-white'} cursor-pointer active:bg-slate-50`}>
@@ -248,7 +265,11 @@
 
             const add = () => {
                 if(!text.trim() && !image) return;
-                const newTodo = { id: Date.now(), text: text || '', done: false };
+                const newTodo = { 
+                    id: Date.now(), 
+                    text: text || '', 
+                    done: false 
+                };
                 if (image) newTodo.image = image;
                 setTodos(p => ({...p, [date]: [...(p[date]||[]), newTodo]}));
                 setText('');
@@ -297,22 +318,18 @@
                     callback: async (res) => {
                         if (res.access_token) {
                             try {
-                                // 할 일 목록을 텍스트 파일로 저장
                                 const list = (todos[date] || []).map(t => `[${t.done ? 'V' : ' '}] ${t.text}`).join('\n');
                                 if (list) {
                                     await uploadFile(res.access_token, `${date}_memo.txt`, list, 'text/plain');
                                 }
                                 
-                                // 현재 선택된 사진 파일이 있으면 저장
                                 if (imageFile) {
                                     await uploadFile(res.access_token, `${date}_img.jpg`, imageFile, 'image/jpeg');
                                 }
                                 
-                                // 이미 저장된 할 일에 첨부된 사진들도 저장
                                 const todosWithImages = (todos[date] || []).filter(t => t.image);
                                 for (let i = 0; i < todosWithImages.length; i++) {
                                     const todo = todosWithImages[i];
-                                    // Base64를 Blob으로 변환
                                     const response = await fetch(todo.image);
                                     const blob = await response.blob();
                                     await uploadFile(res.access_token, `${date}_saved_img_${i + 1}.jpg`, blob, 'image/jpeg');
