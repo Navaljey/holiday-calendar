@@ -488,27 +488,6 @@
                 setEditText('');
             };
 
-            const saveDrive = () => {
-                const client = google.accounts.oauth2.initTokenClient({
-                    client_id: CLIENT_ID,
-                    scope: SCOPES,
-                    callback: async (res) => {
-                        if (res.access_token) {
-                            try {
-                                // 전체 데이터를 JSON으로 저장
-                                const jsonData = JSON.stringify(todos);
-                                await uploadFile(res.access_token, 'calendar_data.json', jsonData, 'application/json');
-                                alert("구글 드라이브에 저장이 완료되었습니다.");
-                            } catch (error) {
-                                console.error('드라이브 저장 오류:', error);
-                                alert("저장 중 오류가 발생했습니다.");
-                            }
-                        }
-                    },
-                });
-                client.requestAccessToken();
-            };
-
             return (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end z-50" onClick={onClose}>
                     <div className="bg-white w-full rounded-t-[32px] p-6 pb-12 animate-in slide-in-from-bottom max-h-[85vh] overflow-y-auto hide-scrollbar" onClick={e=>e.stopPropagation()}>
@@ -574,9 +553,6 @@
                                 </div>
                             ))}
                         </div>
-                        <button onClick={saveDrive} className="w-full bg-sky-500 text-white py-4 rounded-2xl text-sm font-bold shadow-lg shadow-sky-100">
-                            💾 Google 드라이브에 저장
-                        </button>
                     </div>
                 </div>
             );
