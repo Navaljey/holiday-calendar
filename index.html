@@ -9,8 +9,8 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap');
         body { font-family: 'Pretendard', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .calendar-cell { min-height: 90px; transition: all 0.2s; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; }
-        @media (max-width: 640px) { .calendar-cell { min-height: 80px; } }
+        .calendar-cell { min-height: 95px; transition: all 0.2s; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; }
+        @media (max-width: 640px) { .calendar-cell { min-height: 85px; } }
         .todo-done { text-decoration: line-through; color: #cbd5e1; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
     </style>
@@ -32,7 +32,7 @@
             '2026-01-17': { ph: 'OFF 토요일' },
             '2026-01-31': { ph: 'OFF 토요일' },
             '2026-02-14': { ph: 'OFF 토요일' },
-            '2026-02-16': { kr: '설날 전날', ph: 'OFF토요일 대체'  },
+            '2026-02-16': { kr: '설날 전날', ph: 'OFF토요일 대체' },
             '2026-02-17': { kr: '설날', ph: 'Chinese New Year' },
             '2026-02-18': { kr: '설날 다음날' },
             '2026-03-01': { kr: '삼일절' },
@@ -297,14 +297,14 @@
                     }
 
                     cells.push(
-                        <div key={d} onClick={() => setModal(date)} className={`calendar-cell p-1.5 ${isToday ? 'bg-sky-50' : 'bg-white'} cursor-pointer active:bg-slate-50`}>
-                            <div className="flex justify-between">
-                                <span className={`text-sm ${color} ${isToday ? 'font-bold' : ''}`}>{d}</span>
-                                {total > 0 && <span className="text-[9px] bg-slate-100 px-1 rounded text-slate-500">{remaining}/{total}</span>}
+                        <div key={d} onClick={() => setModal(date)} className={`calendar-cell p-2 ${isToday ? 'bg-sky-50' : 'bg-white'} cursor-pointer active:bg-slate-50`}>
+                            <div className="flex justify-between items-center">
+                                <span className={`text-base font-semibold ${color} ${isToday ? 'font-bold' : ''}`}>{d}</span>
+                                {total > 0 && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-medium">{remaining}/{total}</span>}
                             </div>
-                            <div className="mt-1 space-y-0.5">
-                                {holiday?.kr && <div className="text-[8px] px-1 bg-sky-50 text-sky-600 rounded truncate">{holiday.kr}</div>}
-                                {holiday?.ph && <div className="text-[8px] px-1 bg-rose-50 text-rose-600 rounded truncate font-medium">{holiday.ph}</div>}
+                            <div className="mt-1.5 space-y-1">
+                                {holiday?.kr && <div className="text-[9px] px-1.5 py-0.5 bg-sky-50 text-sky-600 rounded truncate font-medium">{holiday.kr}</div>}
+                                {holiday?.ph && <div className="text-[9px] px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded truncate font-semibold">{holiday.ph}</div>}
                             </div>
                         </div>
                     );
@@ -315,12 +315,12 @@
             return (
                 <div className="max-w-md mx-auto p-4 min-h-screen pb-10">
                     <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                        <button onClick={() => setMonth(m => m > 0 ? m - 1 : 11)} className="p-2 text-slate-400">이전</button>
+                        <button onClick={() => setMonth(m => m > 0 ? m - 1 : 11)} className="p-2 text-slate-400 text-base font-medium">이전</button>
                         <div className="text-center">
-                            <h1 className="text-lg font-bold">2026년 {month + 1}월</h1>
+                            <h1 className="text-xl font-bold">2026년 {month + 1}월</h1>
                             {syncStatus && <div className="text-xs text-sky-500 mt-1">{syncStatus}</div>}
                         </div>
-                        <button onClick={() => setMonth(m => m < 11 ? m + 1 : 0)} className="p-2 text-slate-400">다음</button>
+                        <button onClick={() => setMonth(m => m < 11 ? m + 1 : 0)} className="p-2 text-slate-400 text-base font-medium">다음</button>
                     </div>
                     <div className="flex gap-2 mb-4">
                         <button onClick={loadFromDrive} className="flex-1 bg-sky-500 text-white py-3 rounded-2xl text-sm font-bold shadow-sm">
@@ -331,7 +331,7 @@
                         </button>
                     </div>
                     <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
-                        <div className="grid grid-cols-7 bg-slate-50/50 py-3 text-center border-b border-slate-100 text-[11px] font-bold text-slate-400">
+                        <div className="grid grid-cols-7 bg-slate-50/50 py-3 text-center border-b border-slate-100 text-xs font-bold text-slate-400">
                             {['일','월','화','수','목','금','토'].map(d => <div key={d}>{d}</div>)}
                         </div>
                         <div className="grid grid-cols-7">{renderCalendar()}</div>
@@ -343,11 +343,11 @@
                             <div className="space-y-4 max-h-96 overflow-y-auto hide-scrollbar">
                                 {monthTodos().map(({ date, day, todos: dayTodos }) => (
                                     <div key={date} className="border-b border-slate-100 pb-4 last:border-0">
-                                        <div className="text-sm font-bold text-slate-600 mb-2">{month + 1}월 {day}일</div>
+                                        <div className="text-base font-bold text-slate-600 mb-2">{month + 1}월 {day}일</div>
                                         <div className="space-y-2">
                                             {dayTodos.map(t => (
                                                 <div key={t.id} className="flex items-start gap-2">
-                                                    <div className={`flex-1 text-sm ${t.done ? 'todo-done' : 'text-slate-700'}`}>{t.text}</div>
+                                                    <div className={`flex-1 text-base ${t.done ? 'todo-done' : 'text-slate-700'}`}>{t.text}</div>
                                                     {t.image && (
                                                         <img 
                                                             src={t.image} 
@@ -395,6 +395,9 @@
             const [imageFile, setImageFile] = useState(null);
             const [editingId, setEditingId] = useState(null);
             const [editText, setEditText] = useState('');
+            const [movingId, setMovingId] = useState(null); // 날짜 이동 중인 할 일 ID
+            const [moveMonth, setMoveMonth] = useState(parseInt(date.split('-')[1]) - 1); // 이동할 월
+            const [moveDay, setMoveDay] = useState(parseInt(date.split('-')[2])); // 이동할 일
 
             const handleImageChange = (e) => {
                 const file = e.target.files[0];
@@ -487,22 +490,74 @@
                 setEditText('');
             };
 
+            // 날짜 이동 시작
+            const startMove = (todo) => {
+                setMovingId(todo.id);
+                const currentDate = date.split('-');
+                setMoveMonth(parseInt(currentDate[1]) - 1);
+                setMoveDay(parseInt(currentDate[2]));
+            };
+
+            // 날짜 이동 실행
+            const executeMove = (id) => {
+                // 새로운 날짜 생성
+                const newDate = `2026-${String(moveMonth + 1).padStart(2, '0')}-${String(moveDay).padStart(2, '0')}`;
+                
+                // 같은 날짜면 취소
+                if (newDate === date) {
+                    setMovingId(null);
+                    return;
+                }
+
+                setTodos(p => {
+                    // 원본 날짜에서 할 일 찾기
+                    const todoToMove = p[date].find(t => t.id === id);
+                    if (!todoToMove) return p;
+
+                    // 원본 날짜에서 제거
+                    const filteredOriginal = p[date].filter(t => t.id !== id);
+                    
+                    const newState = { ...p };
+                    
+                    // 원본 날짜 업데이트
+                    if (filteredOriginal.length === 0) {
+                        delete newState[date];
+                    } else {
+                        newState[date] = filteredOriginal;
+                    }
+                    
+                    // 새 날짜에 추가
+                    newState[newDate] = [...(newState[newDate] || []), todoToMove];
+                    
+                    return newState;
+                });
+                
+                setMovingId(null);
+            };
+
+            const cancelMove = () => {
+                setMovingId(null);
+            };
+
+            // 선택한 월의 일 수 계산
+            const daysInMoveMonth = new Date(2026, moveMonth + 1, 0).getDate();
+
             return (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end z-50" onClick={onClose}>
                     <div className="bg-white w-full rounded-t-[32px] p-6 pb-12 animate-in slide-in-from-bottom max-h-[85vh] overflow-y-auto hide-scrollbar" onClick={e=>e.stopPropagation()}>
                         <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6 cursor-pointer" onClick={onClose}></div>
                         <h2 className="text-xl font-bold mb-6">{date} 메모</h2>
                         <div className="flex gap-2 mb-4">
-                            <input value={text} onChange={e=>setText(e.target.value)} onKeyPress={e=>e.key==='Enter'&&add()} className="flex-1 bg-slate-50 rounded-xl px-4 py-3 outline-none" placeholder="할 일 입력" />
-                            <button onClick={add} className="bg-slate-900 text-white px-6 rounded-xl font-bold">추가</button>
+                            <input value={text} onChange={e=>setText(e.target.value)} onKeyPress={e=>e.key==='Enter'&&add()} className="flex-1 bg-slate-50 rounded-xl px-4 py-3 text-base outline-none" placeholder="할 일 입력" />
+                            <button onClick={add} className="bg-slate-900 text-white px-6 rounded-xl font-bold text-sm">추가</button>
                         </div>
                         <div className="flex gap-2 mb-4">
-                            <label className="flex-1 bg-slate-100 py-3 rounded-2xl text-center text-xs font-bold cursor-pointer">
+                            <label className="flex-1 bg-slate-100 py-3 rounded-2xl text-center text-sm font-bold cursor-pointer">
                                 📷 {imagePreview ? "선택됨" : "사진 선택"}
                                 <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
                             </label>
                             {imagePreview && (
-                                <button onClick={() => { setImage(null); setImagePreview(null); setImageFile(null); }} className="bg-rose-100 text-rose-600 px-4 rounded-2xl text-xs font-bold">취소</button>
+                                <button onClick={() => { setImage(null); setImagePreview(null); setImageFile(null); }} className="bg-rose-100 text-rose-600 px-4 rounded-2xl text-sm font-bold">취소</button>
                             )}
                         </div>
                         {imagePreview && (
@@ -519,18 +574,54 @@
                                                 value={editText}
                                                 onChange={(e) => setEditText(e.target.value)}
                                                 onKeyPress={(e) => e.key === 'Enter' && saveEdit(t.id)}
-                                                className="w-full px-3 py-2 bg-white rounded-lg text-sm outline-none border border-slate-200"
+                                                className="w-full px-3 py-2 bg-white rounded-lg text-base outline-none border border-slate-200"
                                                 autoFocus
                                             />
                                             <div className="flex gap-2">
-                                                <button onClick={() => saveEdit(t.id)} className="flex-1 bg-slate-900 text-white py-2 rounded-lg text-xs font-bold">저장</button>
-                                                <button onClick={cancelEdit} className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg text-xs font-bold">취소</button>
+                                                <button onClick={() => saveEdit(t.id)} className="flex-1 bg-slate-900 text-white py-2 rounded-lg text-sm font-bold">저장</button>
+                                                <button onClick={cancelEdit} className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-bold">취소</button>
+                                            </div>
+                                        </div>
+                                    ) : movingId === t.id ? (
+                                        <div className="space-y-3">
+                                            <div className="text-sm font-medium text-slate-700 mb-2">날짜 선택</div>
+                                            <div className="flex gap-2">
+                                                <select 
+                                                    value={moveMonth} 
+                                                    onChange={(e) => {
+                                                        const newMonth = parseInt(e.target.value);
+                                                        setMoveMonth(newMonth);
+                                                        // 선택한 월의 마지막 날보다 현재 선택된 날이 크면 조정
+                                                        const maxDay = new Date(2026, newMonth + 1, 0).getDate();
+                                                        if (moveDay > maxDay) {
+                                                            setMoveDay(maxDay);
+                                                        }
+                                                    }}
+                                                    className="flex-1 px-3 py-2 bg-white rounded-lg text-base outline-none border border-slate-200"
+                                                >
+                                                    {Array.from({length: 12}, (_, i) => (
+                                                        <option key={i} value={i}>{i + 1}월</option>
+                                                    ))}
+                                                </select>
+                                                <select 
+                                                    value={moveDay} 
+                                                    onChange={(e) => setMoveDay(parseInt(e.target.value))}
+                                                    className="flex-1 px-3 py-2 bg-white rounded-lg text-base outline-none border border-slate-200"
+                                                >
+                                                    {Array.from({length: daysInMoveMonth}, (_, i) => (
+                                                        <option key={i} value={i + 1}>{i + 1}일</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => executeMove(t.id)} className="flex-1 bg-sky-500 text-white py-2 rounded-lg text-sm font-bold">이동</button>
+                                                <button onClick={cancelMove} className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-bold">취소</button>
                                             </div>
                                         </div>
                                     ) : (
                                         <div className="flex items-start gap-3">
                                             <div onClick={() => toggle(t.id)} className="flex-1 cursor-pointer">
-                                                <div className={`text-sm ${t.done ? 'todo-done' : 'font-medium'}`}>{t.text}</div>
+                                                <div className={`text-base ${t.done ? 'todo-done' : 'font-medium'}`}>{t.text}</div>
                                                 {t.image && (
                                                     <img 
                                                         src={t.image} 
@@ -544,8 +635,9 @@
                                                 )}
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <button onClick={() => startEdit(t)} className="text-slate-400 hover:text-sky-500 text-sm px-1">✎</button>
-                                                <button onClick={() => remove(t.id)} className="text-slate-300 hover:text-rose-500 text-lg px-1">×</button>
+                                                <button onClick={() => startEdit(t)} className="text-slate-400 hover:text-sky-500 text-base px-1" title="수정">✎</button>
+                                                <button onClick={() => startMove(t)} className="text-slate-400 hover:text-amber-500 text-base px-1" title="날짜 이동">📅</button>
+                                                <button onClick={() => remove(t.id)} className="text-slate-300 hover:text-rose-500 text-xl px-1" title="삭제">×</button>
                                             </div>
                                         </div>
                                     )}
