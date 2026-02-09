@@ -13,6 +13,8 @@
         @media (max-width: 640px) { .calendar-cell { min-height: 85px; } }
         .todo-done { text-decoration: line-through; color: #cbd5e1; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .animate-in { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -21,9 +23,9 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
-        // 구글 드라이브 클라이언트 ID
+        // 구글 드라이브 설정
         const CLIENT_ID = '314931997732-1bf05smib05uh54cr4d1fnpurb85emln.apps.googleusercontent.com';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
@@ -87,22 +89,19 @@
             '2026-12-31': { ph: 'Last Day of the Year' }
         };
 
-        // 구글 드라이브 파일 업로드 (덮어쓰기)
+        // 구글 드라이브 헬퍼 함수
         const uploadFile = async (token, name, content, type) => {
-            // 기존 파일 검색
-            const searchResponse = await fetch(
-                `https://www.googleapis.com/drive/v3/files?q=name='${name}'&fields=files(id)`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            const searchData = await searchResponse.json();
+            const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${name}'&fields=files(id)`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const searchData = await searchRes.json();
+            const fileId = searchData.files?.[0]?.id;
             
             const metadata = { name, mimeType: type };
             const form = new FormData();
             form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-            form.append('file', content);
-            
-            // 기존 파일이 있으면 업데이트, 없으면 새로 생성
-            const fileId = searchData.files && searchData.files.length > 0 ? searchData.files[0].id : null;
+            form.append('file', new Blob([content], { type }));
+
             const url = fileId 
                 ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
                 : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
@@ -110,278 +109,137 @@
             return fetch(url, {
                 method: fileId ? 'PATCH' : 'POST',
                 headers: { Authorization: `Bearer ${token}` },
-                body: form,
+                body: form
             });
         };
 
-        // 구글 드라이브에서 파일 다운로드 (스트리밍 방식)
         const downloadFile = async (token, name) => {
-            try {
-                const searchResponse = await fetch(
-                    `https://www.googleapis.com/drive/v3/files?q=name='${name}'&fields=files(id,size)`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-                const searchData = await searchResponse.json();
-                
-                if (!searchData.files || searchData.files.length === 0) {
-                    return null;
-                }
-                
-                const file = searchData.files[0];
-                const fileId = file.id;
-                const fileSize = file.size;
-                
-                // 파일 크기 체크 (10MB 이상이면 경고)
-                if (fileSize && fileSize > 10 * 1024 * 1024) {
-                    console.warn('파일이 너무 큽니다:', fileSize, 'bytes');
-                    return null;
-                }
-                
-                const downloadResponse = await fetch(
-                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-                
-                if (!downloadResponse.ok) {
-                    throw new Error('다운로드 실패');
-                }
-                
-                const text = await downloadResponse.text();
-                return text;
-            } catch (error) {
-                console.error('파일 다운로드 오류:', error);
-                return null;
-            }
+            const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${name}'&fields=files(id)`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const searchData = await searchRes.json();
+            if (!searchData.files?.length) return null;
+            
+            const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${searchData.files[0].id}?alt=media`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return await fileRes.text();
         };
 
         const App = () => {
-            const today = new Date();
-            const [month, setMonth] = useState(today.getMonth());
+            const [month, setMonth] = useState(new Date().getMonth());
             const [todos, setTodos] = useState({});
             const [modal, setModal] = useState(null);
             const [viewImage, setViewImage] = useState(null);
-            const [syncStatus, setSyncStatus] = useState(''); // 동기화 상태 표시
+            const [syncStatus, setSyncStatus] = useState('');
 
+            // 초기 로컬 데이터 로드
             useEffect(() => {
-                const saved = localStorage.getItem('calendar_v5');
-                if (saved) setTodos(JSON.parse(saved));
-                
-                // 자동으로 구글 드라이브에서 불러오기
-                loadFromDrive();
+                const saved = localStorage.getItem('calendar_v2026');
+                if (saved) try { setTodos(JSON.parse(saved)); } catch(e) {}
             }, []);
 
+            // [수정] 디바운싱 저장 로직 (사파리 튕김 방지)
             useEffect(() => {
-                localStorage.setItem('calendar_v5', JSON.stringify(todos));
+                const timer = setTimeout(() => {
+                    try {
+                        localStorage.setItem('calendar_v2026', JSON.stringify(todos));
+                    } catch (e) {
+                        console.error("저장용량 초과", e);
+                    }
+                }, 800);
+                return () => clearTimeout(timer);
             }, [todos]);
 
-            const loadFromDrive = () => {
+            const handleDriveSync = (mode) => {
                 const client = google.accounts.oauth2.initTokenClient({
                     client_id: CLIENT_ID,
                     scope: SCOPES,
                     callback: async (res) => {
                         if (res.access_token) {
                             try {
-                                setSyncStatus('불러오는 중...');
-                                const data = await downloadFile(res.access_token, 'calendar_data.json');
-                                
-                                if (!data) {
-                                    setSyncStatus('파일 없음');
-                                    setTimeout(() => setSyncStatus(''), 2000);
-                                    return;
+                                setSyncStatus(mode === 'load' ? '불러오는 중...' : '저장 중...');
+                                if (mode === 'load') {
+                                    const data = await downloadFile(res.access_token, 'calendar_2026.json');
+                                    if (data) {
+                                        setTodos(JSON.parse(data));
+                                        setSyncStatus('✓ 동기화 완료');
+                                    }
+                                } else {
+                                    await uploadFile(res.access_token, 'calendar_2026.json', JSON.stringify(todos), 'application/json');
+                                    setSyncStatus('✓ 저장 완료');
                                 }
-                                
-                                // 데이터 크기 체크
-                                const dataSizeInMB = new Blob([data]).size / (1024 * 1024);
-                                console.log('데이터 크기:', dataSizeInMB.toFixed(2), 'MB');
-                                
-                                if (dataSizeInMB > 5) {
-                                    setSyncStatus('❌ 데이터가 너무 큽니다');
-                                    alert('저장된 데이터가 너무 커서 불러올 수 없습니다. 일부 사진을 삭제해주세요.');
-                                    setTimeout(() => setSyncStatus(''), 2000);
-                                    return;
-                                }
-                                
-                                // 조금씩 파싱 시도
-                                const parsedData = JSON.parse(data);
-                                
-                                // 데이터 개수 체크
-                                const totalTodos = Object.values(parsedData).reduce((sum, arr) => sum + arr.length, 0);
-                                console.log('총 할 일 개수:', totalTodos);
-                                
-                                // 상태 업데이트를 비동기로 처리
-                                setTimeout(() => {
-                                    setTodos(parsedData);
-                                    localStorage.setItem('calendar_v5', JSON.stringify(parsedData));
-                                    setSyncStatus('✓ 동기화 완료');
-                                    setTimeout(() => setSyncStatus(''), 2000);
-                                }, 100);
-                                
-                            } catch (error) {
-                                console.error('데이터 파싱 오류:', error);
-                                setSyncStatus('❌ 불러오기 실패');
-                                alert('데이터를 불러오는 중 오류가 발생했습니다. 데이터가 손상되었을 수 있습니다.');
+                            } catch (e) {
+                                setSyncStatus('❌ 실패');
+                            } finally {
                                 setTimeout(() => setSyncStatus(''), 2000);
                             }
                         }
-                    },
-                });
-                try {
-                    client.requestAccessToken({ prompt: '' });
-                } catch (error) {
-                    console.log('자동 로그인 건너뜀');
-                }
-            };
-
-            const saveToDrive = async () => {
-                const client = google.accounts.oauth2.initTokenClient({
-                    client_id: CLIENT_ID,
-                    scope: SCOPES,
-                    callback: async (res) => {
-                        if (res.access_token) {
-                            try {
-                                setSyncStatus('저장 중...');
-                                const jsonData = JSON.stringify(todos);
-                                await uploadFile(res.access_token, 'calendar_data.json', jsonData, 'application/json');
-                                setSyncStatus('✓ 저장 완료');
-                                setTimeout(() => setSyncStatus(''), 2000);
-                            } catch (error) {
-                                console.error('저장 오류:', error);
-                                setSyncStatus('❌ 저장 실패');
-                                setTimeout(() => setSyncStatus(''), 2000);
-                            }
-                        }
-                    },
-                });
-                client.requestAccessToken();
-            };
-
-            const fmt = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const daysInMonth = (m) => new Date(2026, m + 1, 0).getDate();
-            const startDay = (m) => new Date(2026, m, 1).getDay();
-
-            const monthTodos = () => {
-                const result = [];
-                for (let d = 1; d <= daysInMonth(month); d++) {
-                    const date = fmt(2026, month, d);
-                    const dayTodos = todos[date];
-                    if (dayTodos && dayTodos.length > 0) {
-                        result.push({ date, day: d, todos: dayTodos });
                     }
-                }
-                return result;
+                });
+                client.requestAccessToken({ prompt: mode === 'load' ? '' : 'consent' });
             };
 
-            const renderCalendar = () => {
-                const cells = [];
-                for (let i = 0; i < startDay(month); i++) cells.push(<div key={`e-${i}`} />);
-                for (let d = 1; d <= daysInMonth(month); d++) {
-                    const date = fmt(2026, month, d);
-                    const holiday = holidayData[date];
-                    const dayTodos = todos[date] || [];
-                    const total = dayTodos.length;
-                    const remaining = dayTodos.filter(t => !t.done).length;
-                    const dow = new Date(2026, month, d).getDay();
-                    const isToday = today.getFullYear() === 2026 && today.getMonth() === month && today.getDate() === d;
-
-                    // 색상 결정 로직
-                    let color = "text-slate-600";
-                    if (holiday?.ph) {
-                        // 필리핀 공휴일이 있으면 무조건 빨간색
-                        color = "text-rose-500 font-bold";
-                    } else if (dow === 0) {
-                        // 일요일
-                        color = "text-rose-500 font-bold";
-                    } else if (holiday?.kr) {
-                        // 한국 공휴일
-                        color = "text-sky-500 font-bold";
-                    }
-
-                    cells.push(
-                        <div key={d} onClick={() => setModal(date)} className={`calendar-cell p-2 ${isToday ? 'bg-sky-50' : 'bg-white'} cursor-pointer active:bg-slate-50`}>
-                            <div className="flex justify-between items-center">
-                                <span className={`text-base font-semibold ${color} ${isToday ? 'font-bold' : ''}`}>{d}</span>
-                                {total > 0 && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-medium">{remaining}/{total}</span>}
-                            </div>
-                            <div className="mt-1.5 space-y-1">
-                                {holiday?.kr && <div className="text-[9px] px-1.5 py-0.5 bg-sky-50 text-sky-600 rounded truncate font-medium">{holiday.kr}</div>}
-                                {holiday?.ph && <div className="text-[9px] px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded truncate font-semibold">{holiday.ph}</div>}
-                            </div>
-                        </div>
-                    );
-                }
-                return cells;
-            };
+            const fmt = (m, d) => `2026-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const daysInMonth = new Date(2026, month + 1, 0).getDate();
+            const startDay = new Date(2026, month, 1).getDay();
 
             return (
-                <div className="max-w-md mx-auto p-4 min-h-screen pb-10">
+                <div className="max-w-md mx-auto p-4 min-h-screen pb-20">
                     <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                        <button onClick={() => setMonth(m => m > 0 ? m - 1 : 11)} className="p-2 text-slate-400 text-base font-medium">이전</button>
+                        <button onClick={() => setMonth(m => m > 0 ? m - 1 : 11)} className="p-2 text-slate-400">◀</button>
                         <div className="text-center">
                             <h1 className="text-xl font-bold">2026년 {month + 1}월</h1>
-                            {syncStatus && <div className="text-xs text-sky-500 mt-1">{syncStatus}</div>}
+                            {syncStatus && <div className="text-[10px] text-sky-500 font-bold">{syncStatus}</div>}
                         </div>
-                        <button onClick={() => setMonth(m => m < 11 ? m + 1 : 0)} className="p-2 text-slate-400 text-base font-medium">다음</button>
-                    </div>
-                    <div className="flex gap-2 mb-4">
-                        <button onClick={loadFromDrive} className="flex-1 bg-sky-500 text-white py-3 rounded-2xl text-sm font-bold shadow-sm">
-                            ↓ 불러오기
-                        </button>
-                        <button onClick={saveToDrive} className="flex-1 bg-slate-900 text-white py-3 rounded-2xl text-sm font-bold shadow-sm">
-                            ↑ 저장하기
-                        </button>
-                    </div>
-                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
-                        <div className="grid grid-cols-7 bg-slate-50/50 py-3 text-center border-b border-slate-100 text-xs font-bold text-slate-400">
-                            {['일','월','화','수','목','금','토'].map(d => <div key={d}>{d}</div>)}
-                        </div>
-                        <div className="grid grid-cols-7">{renderCalendar()}</div>
+                        <button onClick={() => setMonth(m => m < 11 ? m + 1 : 0)} className="p-2 text-slate-400">▶</button>
                     </div>
 
-                    {monthTodos().length > 0 && (
-                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-6">
-                            <h2 className="text-lg font-bold mb-4">이번 달 할 일</h2>
-                            <div className="space-y-4 max-h-96 overflow-y-auto hide-scrollbar">
-                                {monthTodos().map(({ date, day, todos: dayTodos }) => (
-                                    <div key={date} className="border-b border-slate-100 pb-4 last:border-0">
-                                        <div className="text-base font-bold text-slate-600 mb-2">{month + 1}월 {day}일</div>
-                                        <div className="space-y-2">
-                                            {dayTodos.map(t => (
-                                                <div key={t.id} className="flex items-start gap-2">
-                                                    <div className={`flex-1 text-base ${t.done ? 'todo-done' : 'text-slate-700'}`}>{t.text}</div>
-                                                    {t.image && (
-                                                        <img 
-                                                            src={t.image} 
-                                                            alt="첨부" 
-                                                            className="w-12 h-12 rounded object-cover cursor-pointer hover:opacity-80"
-                                                            onClick={() => setViewImage(t.image)}
-                                                        />
-                                                    )}
+                    <div className="flex gap-2 mb-6">
+                        <button onClick={() => handleDriveSync('load')} className="flex-1 bg-white border border-slate-200 py-3 rounded-2xl text-xs font-bold shadow-sm active:scale-95 transition-transform">☁️ 불러오기</button>
+                        <button onClick={() => handleDriveSync('save')} className="flex-1 bg-slate-900 text-white py-3 rounded-2xl text-xs font-bold shadow-sm active:scale-95 transition-transform">💾 클라우드 저장</button>
+                    </div>
+
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="grid grid-cols-7 bg-slate-50/50 py-3 text-center text-[10px] font-bold text-slate-400 border-b border-slate-100">
+                            {['SUN','MON','TUE','WED','THU','FRI','SAT'].map(d => <div key={d}>{d}</div>)}
+                        </div>
+                        <div className="grid grid-cols-7">
+                            {[...Array(startDay)].map((_, i) => <div key={`e-${i}`} className="calendar-cell bg-slate-50/30" />)}
+                            {[...Array(daysInMonth)].map((_, i) => {
+                                const d = i + 1;
+                                const dateStr = fmt(month, d);
+                                const h = holidayData[dateStr];
+                                const isSun = new Date(2026, month, d).getDay() === 0;
+                                const dayTodos = todos[dateStr] || [];
+
+                                return (
+                                    <div key={d} onClick={() => setModal(dateStr)} className="calendar-cell p-1 cursor-pointer active:bg-slate-50 relative">
+                                        <div className="flex flex-col h-full">
+                                            <span className={`text-sm font-semibold ${isSun || h?.kr ? 'text-rose-500' : 'text-slate-600'}`}>{d}</span>
+                                            {h && (
+                                                <div className="text-[8px] leading-tight mt-0.5">
+                                                    {h.kr && <div className="text-rose-400 font-bold break-keep">{h.kr}</div>}
+                                                    {h.ph && <div className="text-sky-500 font-medium break-keep line-clamp-1">{h.ph}</div>}
                                                 </div>
-                                            ))}
+                                            )}
+                                            <div className="mt-auto flex flex-wrap gap-0.5">
+                                                {dayTodos.slice(0, 3).map(t => (
+                                                    <div key={t.id} className={`w-1 h-1 rounded-full ${t.done ? 'bg-slate-300' : 'bg-sky-400'}`} />
+                                                ))}
+                                                {dayTodos.length > 3 && <div className="text-[7px] text-slate-400">+</div>}
+                                            </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                );
+                            })}
                         </div>
-                    )}
+                    </div>
 
                     {modal && <Modal date={modal} onClose={() => setModal(null)} todos={todos} setTodos={setTodos} setViewImage={setViewImage} />}
                     {viewImage && (
-                        <div onClick={() => setViewImage(null)} className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[60]">
-                            <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
-                                <button 
-                                    onClick={() => setViewImage(null)} 
-                                    className="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 z-10 bg-black/50 w-12 h-12 rounded-full flex items-center justify-center"
-                                >
-                                    ×
-                                </button>
-                                <img 
-                                    src={viewImage} 
-                                    alt="확대 보기" 
-                                    className="max-w-full max-h-full object-contain rounded-lg"
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                            </div>
+                        <div onClick={() => setViewImage(null)} className="fixed inset-0 bg-black/90 flex items-center justify-center z-[70] p-4">
+                            <img src={viewImage} className="max-w-full max-h-full object-contain rounded-lg" />
                         </div>
                     )}
                 </div>
@@ -391,265 +249,94 @@
         const Modal = ({ date, onClose, todos, setTodos, setViewImage }) => {
             const [text, setText] = useState('');
             const [image, setImage] = useState(null);
-            const [imagePreview, setImagePreview] = useState(null);
-            const [imageFile, setImageFile] = useState(null);
-            const [editingId, setEditingId] = useState(null);
-            const [editText, setEditText] = useState('');
-            const [movingId, setMovingId] = useState(null); // 날짜 이동 중인 할 일 ID
-            const [moveMonth, setMoveMonth] = useState(parseInt(date.split('-')[1]) - 1); // 이동할 월
-            const [moveDay, setMoveDay] = useState(parseInt(date.split('-')[2])); // 이동할 일
+            const [loading, setLoading] = useState(false);
 
-            const handleImageChange = (e) => {
+            // [수정] 이미지 압축 (최대 600px, 품질 0.5)
+            const handleImage = (e) => {
                 const file = e.target.files[0];
-                if (file) {
-                    setImageFile(file);
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        const img = new Image();
-                        img.onload = () => {
-                            // 이미지 리사이징 (더 작게)
-                            const canvas = document.createElement('canvas');
-                            let width = img.width;
-                            let height = img.height;
-                            const maxSize = 800; // 최대 크기를 800px로 축소
-                            
-                            if (width > height && width > maxSize) {
-                                height = (height * maxSize) / width;
-                                width = maxSize;
-                            } else if (height > maxSize) {
-                                width = (width * maxSize) / height;
-                                height = maxSize;
-                            }
-                            
-                            canvas.width = width;
-                            canvas.height = height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0, width, height);
-                            
-                            // 더 강한 압축 (JPEG 품질 0.6)
-                            const compressedImage = canvas.toDataURL('image/jpeg', 0.6);
-                            
-                            // 압축된 크기 확인
-                            const sizeInKB = (compressedImage.length * 0.75) / 1024;
-                            console.log('압축된 이미지 크기:', sizeInKB.toFixed(2), 'KB');
-                            
-                            setImage(compressedImage);
-                            setImagePreview(compressedImage);
-                        };
-                        img.src = reader.result;
+                if (!file) return;
+                setLoading(true);
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX = 600;
+                        let w = img.width, h = img.height;
+                        if (w > h && w > MAX) { h *= MAX/w; w = MAX; }
+                        else if (h > MAX) { w *= MAX/h; h = MAX; }
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        setImage(canvas.toDataURL('image/jpeg', 0.5));
+                        setLoading(false);
                     };
-                    reader.readAsDataURL(file);
-                }
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
             };
 
             const add = () => {
-                if(!text.trim() && !image) return;
-                const newTodo = { 
-                    id: Date.now(), 
-                    text: text || '', 
-                    done: false 
-                };
-                if (image) newTodo.image = image;
-                setTodos(p => ({...p, [date]: [...(p[date]||[]), newTodo]}));
-                setText('');
-                setImage(null);
-                setImagePreview(null);
-                setImageFile(null);
+                if (!text && !image) return;
+                const newItem = { id: Date.now(), text, image, done: false };
+                setTodos(prev => ({ ...prev, [date]: [...(prev[date] || []), newItem] }));
+                setText(''); setImage(null);
             };
 
             const toggle = (id) => {
-                setTodos(p => ({...p, [date]: p[date].map(t => t.id === id ? { ...t, done: !t.done } : t)}));
+                setTodos(prev => ({
+                    ...prev,
+                    [date]: prev[date].map(t => t.id === id ? { ...t, done: !t.done } : t)
+                }));
             };
 
-            const remove = (id) => {
-                setTodos(p => {
-                    const filtered = p[date].filter(t => t.id !== id);
-                    const newState = { ...p };
-                    if (filtered.length === 0) delete newState[date]; else newState[date] = filtered;
-                    return newState;
+            const del = (id) => {
+                setTodos(prev => {
+                    const filtered = prev[date].filter(t => t.id !== id);
+                    const update = { ...prev };
+                    if (filtered.length) update[date] = filtered; else delete update[date];
+                    return update;
                 });
             };
-
-            const startEdit = (todo) => {
-                setEditingId(todo.id);
-                setEditText(todo.text);
-            };
-
-            const saveEdit = (id) => {
-                if (!editText.trim()) {
-                    setEditingId(null);
-                    return;
-                }
-                setTodos(p => ({...p, [date]: p[date].map(t => t.id === id ? { ...t, text: editText } : t)}));
-                setEditingId(null);
-                setEditText('');
-            };
-
-            const cancelEdit = () => {
-                setEditingId(null);
-                setEditText('');
-            };
-
-            // 날짜 이동 시작
-            const startMove = (todo) => {
-                setMovingId(todo.id);
-                const currentDate = date.split('-');
-                setMoveMonth(parseInt(currentDate[1]) - 1);
-                setMoveDay(parseInt(currentDate[2]));
-            };
-
-            // 날짜 이동 실행
-            const executeMove = (id) => {
-                // 새로운 날짜 생성
-                const newDate = `2026-${String(moveMonth + 1).padStart(2, '0')}-${String(moveDay).padStart(2, '0')}`;
-                
-                // 같은 날짜면 취소
-                if (newDate === date) {
-                    setMovingId(null);
-                    return;
-                }
-
-                setTodos(p => {
-                    // 원본 날짜에서 할 일 찾기
-                    const todoToMove = p[date].find(t => t.id === id);
-                    if (!todoToMove) return p;
-
-                    // 원본 날짜에서 제거
-                    const filteredOriginal = p[date].filter(t => t.id !== id);
-                    
-                    const newState = { ...p };
-                    
-                    // 원본 날짜 업데이트
-                    if (filteredOriginal.length === 0) {
-                        delete newState[date];
-                    } else {
-                        newState[date] = filteredOriginal;
-                    }
-                    
-                    // 새 날짜에 추가
-                    newState[newDate] = [...(newState[newDate] || []), todoToMove];
-                    
-                    return newState;
-                });
-                
-                setMovingId(null);
-            };
-
-            const cancelMove = () => {
-                setMovingId(null);
-            };
-
-            // 선택한 월의 일 수 계산
-            const daysInMoveMonth = new Date(2026, moveMonth + 1, 0).getDate();
 
             return (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end z-50" onClick={onClose}>
-                    <div className="bg-white w-full rounded-t-[32px] p-6 pb-12 animate-in slide-in-from-bottom max-h-[85vh] overflow-y-auto hide-scrollbar" onClick={e=>e.stopPropagation()}>
-                        <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6 cursor-pointer" onClick={onClose}></div>
-                        <h2 className="text-xl font-bold mb-6">{date} 메모</h2>
-                        <div className="flex gap-2 mb-4">
-                            <input value={text} onChange={e=>setText(e.target.value)} onKeyPress={e=>e.key==='Enter'&&add()} className="flex-1 bg-slate-50 rounded-xl px-4 py-3 text-base outline-none" placeholder="할 일 입력" />
-                            <button onClick={add} className="bg-slate-900 text-white px-6 rounded-xl font-bold text-sm">추가</button>
-                        </div>
-                        <div className="flex gap-2 mb-4">
-                            <label className="flex-1 bg-slate-100 py-3 rounded-2xl text-center text-sm font-bold cursor-pointer">
-                                📷 {imagePreview ? "선택됨" : "사진 선택"}
-                                <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
-                            </label>
-                            {imagePreview && (
-                                <button onClick={() => { setImage(null); setImagePreview(null); setImageFile(null); }} className="bg-rose-100 text-rose-600 px-4 rounded-2xl text-sm font-bold">취소</button>
-                            )}
-                        </div>
-                        {imagePreview && (
-                            <div className="mb-4 w-full h-32 bg-slate-100 rounded-2xl overflow-hidden flex items-center justify-center">
-                                <img src={imagePreview} className="h-full object-contain" alt="미리보기" />
-                            </div>
-                        )}
-                        <div className="space-y-3 max-h-80 overflow-y-auto hide-scrollbar mb-6">
-                            {(todos[date]||[]).map(t => (
-                                <div key={t.id} className="p-3 bg-slate-50 rounded-xl">
-                                    {editingId === t.id ? (
-                                        <div className="space-y-2">
-                                            <input
-                                                value={editText}
-                                                onChange={(e) => setEditText(e.target.value)}
-                                                onKeyPress={(e) => e.key === 'Enter' && saveEdit(t.id)}
-                                                className="w-full px-3 py-2 bg-white rounded-lg text-base outline-none border border-slate-200"
-                                                autoFocus
-                                            />
-                                            <div className="flex gap-2">
-                                                <button onClick={() => saveEdit(t.id)} className="flex-1 bg-slate-900 text-white py-2 rounded-lg text-sm font-bold">저장</button>
-                                                <button onClick={cancelEdit} className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-bold">취소</button>
-                                            </div>
-                                        </div>
-                                    ) : movingId === t.id ? (
-                                        <div className="space-y-3">
-                                            <div className="text-sm font-medium text-slate-700 mb-2">날짜 선택</div>
-                                            <div className="flex gap-2">
-                                                <select 
-                                                    value={moveMonth} 
-                                                    onChange={(e) => {
-                                                        const newMonth = parseInt(e.target.value);
-                                                        setMoveMonth(newMonth);
-                                                        // 선택한 월의 마지막 날보다 현재 선택된 날이 크면 조정
-                                                        const maxDay = new Date(2026, newMonth + 1, 0).getDate();
-                                                        if (moveDay > maxDay) {
-                                                            setMoveDay(maxDay);
-                                                        }
-                                                    }}
-                                                    className="flex-1 px-3 py-2 bg-white rounded-lg text-base outline-none border border-slate-200"
-                                                >
-                                                    {Array.from({length: 12}, (_, i) => (
-                                                        <option key={i} value={i}>{i + 1}월</option>
-                                                    ))}
-                                                </select>
-                                                <select 
-                                                    value={moveDay} 
-                                                    onChange={(e) => setMoveDay(parseInt(e.target.value))}
-                                                    className="flex-1 px-3 py-2 bg-white rounded-lg text-base outline-none border border-slate-200"
-                                                >
-                                                    {Array.from({length: daysInMoveMonth}, (_, i) => (
-                                                        <option key={i} value={i + 1}>{i + 1}일</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => executeMove(t.id)} className="flex-1 bg-sky-500 text-white py-2 rounded-lg text-sm font-bold">이동</button>
-                                                <button onClick={cancelMove} className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-bold">취소</button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-start gap-3">
-                                            <div onClick={() => toggle(t.id)} className="flex-1 cursor-pointer">
-                                                <div className={`text-base ${t.done ? 'todo-done' : 'font-medium'}`}>{t.text}</div>
-                                                {t.image && (
-                                                    <img 
-                                                        src={t.image} 
-                                                        alt="첨부" 
-                                                        className="mt-2 h-20 w-auto rounded-lg object-cover cursor-pointer hover:opacity-80 border border-slate-200"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setViewImage(t.image);
-                                                        }}
-                                                    />
-                                                )}
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <button onClick={() => startEdit(t)} className="text-slate-400 hover:text-sky-500 text-base px-1" title="수정">✎</button>
-                                                <button onClick={() => startMove(t)} className="text-slate-400 hover:text-amber-500 text-base px-1" title="날짜 이동">📅</button>
-                                                <button onClick={() => remove(t.id)} className="text-slate-300 hover:text-rose-500 text-xl px-1" title="삭제">×</button>
-                                            </div>
-                                        </div>
-                                    )}
+                    <div className="bg-white w-full rounded-t-[32px] p-6 pb-10 animate-in max-h-[90vh] overflow-y-auto hide-scrollbar" onClick={e => e.stopPropagation()}>
+                        <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6" onClick={onClose} />
+                        <h2 className="text-xl font-bold mb-4">{date.split('-')[1]}월 {date.split('-')[2]}일</h2>
+                        
+                        <div className="space-y-3 mb-6">
+                            {(todos[date] || []).map(t => (
+                                <div key={t.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div onClick={() => toggle(t.id)} className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${t.done ? 'bg-sky-500 border-sky-500' : 'border-slate-300'}`}>
+                                        {t.done && <span className="text-white text-[10px]">✓</span>}
+                                    </div>
+                                    <div className="flex-1 min-w-0" onClick={() => t.image && setViewImage(t.image)}>
+                                        <div className={`text-sm ${t.done ? 'text-slate-400 line-through' : 'font-medium'}`}>{t.text}</div>
+                                        {t.image && <div className="text-[10px] text-sky-500 font-bold mt-1">🖼️ 사진 보기</div>}
+                                    </div>
+                                    <button onClick={() => del(t.id)} className="text-slate-300 px-2 text-lg">×</button>
                                 </div>
                             ))}
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-3xl space-y-3">
+                            <input value={text} onChange={e => setText(e.target.value)} placeholder="메모를 입력하세요" className="w-full bg-transparent outline-none text-sm font-medium" />
+                            <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+                                <label className="flex items-center gap-2 text-slate-400 cursor-pointer active:opacity-50">
+                                    <span className="text-xl">📷</span>
+                                    <span className="text-xs font-bold">{loading ? '압축 중...' : image ? '선택됨' : '사진'}</span>
+                                    <input type="file" accept="image/*" onChange={handleImage} className="hidden" />
+                                </label>
+                                <button onClick={add} className="bg-slate-900 text-white px-6 py-2 rounded-xl text-xs font-bold">추가</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        ReactDOM.render(<App />, document.getElementById('root'));
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
