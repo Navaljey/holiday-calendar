@@ -159,6 +159,8 @@ const App = () => {
     const tokenRef = useRef(null);
 
     // localStorage: 이미지 없이 텍스트만 (용량 문제 완전 해결)
+    // ✅ 사파리: 자동 OAuth 팝업 차단 문제로 앱 시작 시 자동 불러오기 제거
+    // 사용자가 직접 "불러오기" 버튼을 눌러야만 OAuth 실행
     useEffect(() => {
         const saved = localStorage.getItem('calendar_v6');
         if (saved) { try { setTodos(JSON.parse(saved)); } catch (e) {} }
@@ -168,35 +170,53 @@ const App = () => {
         localStorage.setItem('calendar_v6', JSON.stringify(todos));
     }, [todos]);
 
-    // OAuth 토큰 획득 (Promise)
+    // OAuth 토큰 획득 (Promise) — Google SDK 로드 대기 포함
     const getToken = useCallback((prompt = '') => new Promise((resolve) => {
         if (tokenRef.current) { resolve(tokenRef.current); return; }
-        const client = google.accounts.oauth2.initTokenClient({
-            client_id: CLIENT_ID,
-            scope: SCOPES,
-            callback: (res) => {
-                if (res.access_token) {
-                    tokenRef.current = res.access_token;
-                    setTimeout(() => { tokenRef.current = null; }, 3500 * 1000);
-                    resolve(res.access_token);
-                } else { resolve(null); }
-            },
-        });
-        client.requestAccessToken({ prompt });
+
+        // Google SDK가 아직 로드 안 됐으면 최대 10초 대기
+        const waitForGoogle = (retries = 20) => {
+            if (typeof google !== 'undefined' && google.accounts) {
+                try {
+                    const client = google.accounts.oauth2.initTokenClient({
+                        client_id: CLIENT_ID,
+                        scope: SCOPES,
+                        callback: (res) => {
+                            if (res.access_token) {
+                                tokenRef.current = res.access_token;
+                                setTimeout(() => { tokenRef.current = null; }, 3500 * 1000);
+                                resolve(res.access_token);
+                            } else { resolve(null); }
+                        },
+                    });
+                    client.requestAccessToken({ prompt });
+                } catch (e) {
+                    console.error('Google OAuth 오류:', e);
+                    resolve(null);
+                }
+            } else if (retries > 0) {
+                setTimeout(() => waitForGoogle(retries - 1), 500);
+            } else {
+                console.error('Google SDK 로드 실패');
+                resolve(null);
+            }
+        };
+        waitForGoogle();
     }), []);
 
     // 드라이브에서 텍스트 데이터 불러오기
+    // ✅ 사파리: prompt 생략 시 자동으로 'select_account' 사용 (팝업 허용)
     const loadFromDrive = async () => {
         setSyncStatus('불러오는 중...');
         try {
-            const token = await getToken();
+            const token = await getToken('select_account');
             if (!token) { setSyncStatus('❌ 로그인 실패'); setTimeout(() => setSyncStatus(''), 2000); return; }
             const text = await driveDownloadText(token, DATA_FILE);
             if (!text) { setSyncStatus('파일 없음'); setTimeout(() => setSyncStatus(''), 2000); return; }
             const parsed = JSON.parse(text);
             setTodos(parsed);
             localStorage.setItem('calendar_v6', JSON.stringify(parsed));
-            setImageCache({}); // 캐시 초기화
+            setImageCache({});
             setSyncStatus('✓ 불러오기 완료');
         } catch (e) {
             console.error(e);
@@ -209,7 +229,7 @@ const App = () => {
     const saveToDrive = async () => {
         setSyncStatus('저장 중...');
         try {
-            const token = await getToken();
+            const token = await getToken('select_account');
             if (!token) { setSyncStatus('❌ 로그인 실패'); setTimeout(() => setSyncStatus(''), 2000); return; }
             const blob = new Blob([JSON.stringify(todos)], { type: 'application/json' });
             await driveUpload(token, DATA_FILE, blob, 'application/json');
@@ -576,7 +596,29 @@ const Modal = ({ date, onClose, todos, setTodos, loadImage, uploadImage, deleteI
     );
 };
 
-ReactDOM.render(<App />, document.getElementById('root'));
+// 오류 발생 시 흰 화면 대신 메시지 표시
+class ErrorBoundary extends React.Component {
+    constructor(props) { super(props); this.state = { error: null }; }
+    static getDerivedStateFromError(e) { return { error: e }; }
+    render() {
+        if (this.state.error) {
+            return (
+                <div style={{padding:'2rem',textAlign:'center',color:'#ef4444'}}>
+                    <div style={{fontSize:'2rem',marginBottom:'1rem'}}>⚠️</div>
+                    <div style={{fontWeight:'bold',marginBottom:'0.5rem'}}>오류가 발생했습니다</div>
+                    <div style={{fontSize:'0.875rem',color:'#64748b',marginBottom:'1rem'}}>{this.state.error.message}</div>
+                    <button onClick={() => window.location.reload()}
+                        style={{background:'#0f172a',color:'white',padding:'0.75rem 2rem',borderRadius:'1rem',border:'none',fontWeight:'bold',cursor:'pointer'}}>
+                        새로고침
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+ReactDOM.render(<ErrorBoundary><App /></ErrorBoundary>, document.getElementById('root'));
 </script>
 </body>
 </html>
