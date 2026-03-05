@@ -49,60 +49,95 @@ const compressImage = (file) => new Promise((resolve) => {
 });
 
 // ── Google Drive API 헬퍼 ──────────────────────────────────────────
-const driveSearch = async (token, name) => {
+// 파일 ID 캐시: { 파일명: fileId } — API 호출 횟수를 대폭 줄임
+const fileIdCache = {};
+
+// 전체 파일 목록을 한 번에 조회해서 ID 캐시에 저장 (API 1회)
+const driveFetchAllIds = async (token) => {
+    let pageToken = null;
+    do {
+        const url = `https://www.googleapis.com/drive/v3/files?q=trashed=false+and+name+contains+'cal_'&fields=nextPageToken,files(id,name)&pageSize=1000`
+            + (pageToken ? `&pageToken=${pageToken}` : '');
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        const d = await r.json();
+        (d.files || []).forEach(f => { fileIdCache[f.name] = f.id; });
+        // calendar_data.json 도 함께 조회
+        pageToken = d.nextPageToken;
+    } while (pageToken);
+
+    // calendar_data.json 별도 조회 (위 쿼리에 포함 안 될 수 있음)
+    const r2 = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=name='calendar_data.json'+and+trashed=false&fields=files(id,name)`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const d2 = await r2.json();
+    (d2.files || []).forEach(f => { fileIdCache[f.name] = f.id; });
+};
+
+// ID 캐시 기반 검색 (캐시 없으면 API 1회)
+const driveGetId = async (token, name) => {
+    if (fileIdCache[name]) return fileIdCache[name];
     const r = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q=name='${name}'+and+trashed=false&fields=files(id,size)`,
+        `https://www.googleapis.com/drive/v3/files?q=name='${name}'+and+trashed=false&fields=files(id)`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     const d = await r.json();
-    return (d.files && d.files.length > 0) ? d.files[0] : null;
+    const id = (d.files && d.files.length > 0) ? d.files[0].id : null;
+    if (id) fileIdCache[name] = id;
+    return id;
+};
+
+// ID로 직접 다운로드 (API 1회) — 캐시 히트 시 검색 없이 바로 다운로드
+const driveDownloadById = async (token, fileId) => {
+    const r = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return r.ok ? r : null;
 };
 
 const driveUpload = async (token, name, blob, mimeType) => {
-    const existing = await driveSearch(token, name);
+    const existingId = await driveGetId(token, name);
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify({ name, mimeType })], { type: 'application/json' }));
     form.append('file', blob);
-    const url = existing
-        ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`
+    const url = existingId
+        ? `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=multipart`
         : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
     const res = await fetch(url, {
-        method: existing ? 'PATCH' : 'POST',
+        method: existingId ? 'PATCH' : 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: form,
     });
-    return res.json();
+    const data = await res.json();
+    if (data.id) fileIdCache[name] = data.id; // 새 파일이면 ID 캐시에 저장
+    return data;
 };
 
 const driveDownloadText = async (token, name) => {
-    const file = await driveSearch(token, name);
-    if (!file) return null;
-    const r = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    return r.ok ? r.text() : null;
+    const id = await driveGetId(token, name);
+    if (!id) return null;
+    const r = await driveDownloadById(token, id);
+    return r ? r.text() : null;
 };
 
 const driveDownloadBlob = async (token, name) => {
-    const file = await driveSearch(token, name);
-    if (!file) return null;
-    const r = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!r.ok) return null;
+    const id = await driveGetId(token, name);
+    if (!id) return null;
+    const r = await driveDownloadById(token, id);
+    if (!r) return null;
     const blob = await r.blob();
     return URL.createObjectURL(blob);
 };
 
 const driveDelete = async (token, name) => {
-    const file = await driveSearch(token, name);
-    if (!file) return;
-    await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}`, {
+    const id = await driveGetId(token, name);
+    if (!id) return;
+    await fetch(`https://www.googleapis.com/drive/v3/files/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
     });
+    delete fileIdCache[name];
 };
 
 // ── 공휴일 데이터 ────────────────────────────────────────────────
@@ -205,12 +240,16 @@ const App = () => {
     }), []);
 
     // 드라이브에서 텍스트 데이터 불러오기
-    // ✅ 사파리: prompt 생략 시 자동으로 'select_account' 사용 (팝업 허용)
+    // ✅ 로그인 후 파일 ID 전체를 한 번에 캐시 → 이후 이미지 로드 시 API 절약
     const loadFromDrive = async () => {
         setSyncStatus('불러오는 중...');
         try {
             const token = await getToken('select_account');
             if (!token) { setSyncStatus('❌ 로그인 실패'); setTimeout(() => setSyncStatus(''), 2000); return; }
+
+            // 파일 ID 전체 캐시 (API 1~2회로 모든 이미지 ID 확보)
+            await driveFetchAllIds(token);
+
             const text = await driveDownloadText(token, DATA_FILE);
             if (!text) { setSyncStatus('파일 없음'); setTimeout(() => setSyncStatus(''), 2000); return; }
             const parsed = JSON.parse(text);
