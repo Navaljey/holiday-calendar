@@ -1,0 +1,7 @@
+{
+  "name": "holiday-calendar-webpush-test",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": "20.x" },
+  "dependencies": { "web-push": "3.6.7" }
+}
