@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>한-베 달력</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f172a">
+<link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -12,10 +15,23 @@ body{font-family:Pretendard,sans-serif;-webkit-tap-highlight-color:transparent}.
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
+<div class="max-w-md mx-auto px-4 pt-2"><button id="pwaNotifyTest" class="w-full bg-amber-500 text-white py-2 rounded-xl text-sm font-bold">🔔 PWA 알림 테스트</button><div id="pwaNotifyStatus" class="text-xs text-center text-slate-500 mt-1"></div></div>
 <div id="root"></div>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script>
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(console.error);
+const btn=document.getElementById("pwaNotifyTest"), st=document.getElementById("pwaNotifyStatus");
+btn?.addEventListener("click", async ()=>{
+  if (!("Notification" in window)) { st.textContent="이 기기/브라우저는 알림을 지원하지 않습니다."; return; }
+  try {
+    const p=await Notification.requestPermission();
+    st.textContent="알림 권한: "+p;
+    if(p==="granted") new Notification("한-베 달력 PWA 테스트", {body:"기본 웹 알림 테스트입니다.", tag:"pwa-test"});
+  } catch(e){ st.textContent="알림 테스트 실패: "+e.message; }
+});
+</script>
 <script type="text/babel">
 const {useState,useEffect,useRef,useCallback}=React;
 const CLIENT_ID='314931997732-1bf05smib05uh54cr4d1fnpurb85emln.apps.googleusercontent.com';
