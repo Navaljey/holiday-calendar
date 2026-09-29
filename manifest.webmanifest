@@ -1,0 +1,9 @@
+{
+  "name":"한-베 달력 PWA 테스트",
+  "short_name":"한-베 달력",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#f8fafc",
+  "theme_color":"#0f172a",
+  "id":"https://navaljey.github.io/holiday-calendar/"
+}
