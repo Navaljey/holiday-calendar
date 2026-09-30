@@ -5,19 +5,21 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>한-베 달력 · PC Push 테스트</title>
 <style>
-body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 20px;line-height:1.5}button{padding:12px 16px;margin:6px 4px 6px 0;border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:700}textarea,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;margin:6px 0 12px}small{color:#666}.box{border:1px solid #ddd;border-radius:14px;padding:18px;margin:16px 0}.ok{color:green}.err{color:#b00020}
+body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 20px;line-height:1.5}button{padding:12px 16px;margin:6px 4px 6px 0;border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:700}textarea,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;margin:6px 0 12px}small{color:#666}.box{border:1px solid #ddd;border-radius:14px;padding:18px;margin:16px 0}.ok{color:green}.err{color:#b00020}.warn{color:#9a6700;background:#fff8dc;padding:10px;border-radius:10px}
 </style>
 </head>
 <body>
 <h1>📲 PC → iPhone Push 테스트</h1>
 <p>iPhone에서 Push 구독 정보를 만든 뒤 PC에서 이 페이지를 열어 Push를 보냅니다.</p>
+<div id="environment" class="warn"></div>
 
 <div class="box">
 <h2>① iPhone에서 준비</h2>
 <button id="subscribe">iPhone Push 구독 만들기</button>
 <textarea id="subscription" rows="8" placeholder="iPhone에서 생성된 subscription JSON이 여기에 표시됩니다."></textarea>
 <button id="copy">구독 정보 복사</button>
-<small>복사한 내용을 PC의 같은 페이지에 붙여넣으세요. 구독 정보에는 Push endpoint가 포함되므로 공개 게시하지 마세요.</small>
+<p id="iphoneStatus"></p>
+<small>구독 정보에는 Push endpoint가 포함되므로 공개 게시하지 마세요.</small>
 </div>
 
 <div class="box">
@@ -32,28 +34,40 @@ body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0
 const SERVER="https://holiday-calendar-push-server.vercel.app";
 const $=id=>document.getElementById(id);
 let registration;
-function setStatus(t,ok=false){$("status").textContent=t;$("status").className=ok?"ok":"err";}
+function msg(id,t,ok=false){$(id).textContent=t;$(id).className=ok?"ok":"err";}
 function b64ToBytes(s){const p="=".repeat((4-s.length%4)%4),r=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from([...r].map(c=>c.charCodeAt(0)));}
+const standalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+$("environment").textContent=standalone
+ ? "✓ 홈 화면 웹 앱으로 실행 중입니다. Push 테스트에 적합합니다."
+ : "⚠️ 현재 Safari 브라우저에서 실행 중입니다. iPhone에서는 홈 화면에 추가한 '한-베 달력'을 실행한 뒤 이 테스트 페이지를 여는 것을 권장합니다.";
 async function getRegistration(){
+  if(!window.isSecureContext)throw Error("HTTPS 환경이 아닙니다.");
   if(!("serviceWorker" in navigator))throw Error("Service Worker를 지원하지 않는 브라우저입니다.");
-  registration=registration||await navigator.serviceWorker.register("./sw.js");
+  registration=await navigator.serviceWorker.ready;
   return registration;
 }
 $("subscribe").onclick=async()=>{
+  msg("iphoneStatus","① 버튼을 눌렀습니다. Push 기능을 확인하는 중...");
   try{
-    if(!("Notification" in window)||!("PushManager" in window))throw Error("이 브라우저는 Web Push를 지원하지 않습니다.");
+    if(!window.isSecureContext)throw Error("HTTPS 환경이 아닙니다.");
+    if(!("Notification" in window))throw Error("Notification API를 지원하지 않습니다.");
+    if(!("PushManager" in window))throw Error("Push API를 지원하지 않습니다. iPhone에서는 홈 화면 웹 앱으로 실행했는지 확인하세요.");
     const permission=Notification.permission==="granted"?"granted":await Notification.requestPermission();
-    if(permission!=="granted")throw Error("알림 권한을 허용해주세요.");
+    if(permission!=="granted")throw Error("현재 알림 권한이 '"+permission+"' 상태입니다. iPhone 설정 → 알림 → 한-베 달력에서 알림을 허용하세요.");
+    msg("iphoneStatus","② 알림 권한 확인 완료. Service Worker를 확인하는 중...");
     const reg=await getRegistration();
-    const cfg=await (await fetch(SERVER+"/api/config")).json();
-    if(!cfg.publicKey)throw Error(cfg.error||"VAPID 공개키를 받지 못했습니다.");
+    msg("iphoneStatus","③ Vercel에서 VAPID 공개키를 가져오는 중...");
+    const response=await fetch(SERVER+"/api/config",{cache:"no-store"});
+    const cfg=await response.json();
+    if(!response.ok||!cfg.publicKey)throw Error(cfg.error||"VAPID 공개키를 받지 못했습니다.");
+    msg("iphoneStatus","④ Push 구독을 만드는 중...");
     let sub=await reg.pushManager.getSubscription();
     if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(cfg.publicKey)});
-    $("subscription").value=JSON.stringify(sub.toJSON());
-    setStatus("✓ iPhone Push 구독 생성 완료. 내용을 복사해서 PC로 옮기세요.",true);
-  }catch(e){setStatus("❌ "+e.message);}
+    $("subscription").value=JSON.stringify(sub.toJSON(),null,2);
+    msg("iphoneStatus","✓ iPhone Push 구독 생성 완료. 아래 JSON을 복사해서 PC로 옮기세요.",true);
+  }catch(e){msg("iphoneStatus","❌ "+e.message);}
 };
-$("copy").onclick=async()=>{try{await navigator.clipboard.writeText($("subscription").value);setStatus("✓ 복사했습니다. PC에서 붙여넣으세요.",true);}catch(e){setStatus("복사 실패: 내용을 길게 눌러 직접 복사하세요.");}};
+$("copy").onclick=async()=>{try{await navigator.clipboard.writeText($("subscription").value);msg("iphoneStatus","✓ 복사했습니다. PC에서 붙여넣으세요.",true);}catch(e){msg("iphoneStatus","복사 권한이 없어졌습니다. JSON을 길게 눌러 직접 복사하세요.");}};
 $("send").onclick=async()=>{
   try{
     const sub=JSON.parse($("paste").value);
@@ -61,8 +75,8 @@ $("send").onclick=async()=>{
     const r=await fetch(base+"/api/send-test-push",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub,title:"💊 약먹기 Push 테스트",body:"앱을 닫은 상태에서도 Push가 도착했습니다."})});
     const d=await r.json();
     if(!r.ok)throw Error(d.error||"Push 전송 실패");
-    setStatus("✓ Push 전송 요청 완료. iPhone 알림을 확인하세요.",true);
-  }catch(e){setStatus("❌ "+e.message);}
+    msg("status","✓ Push 전송 요청 완료. iPhone 알림을 확인하세요.",true);
+  }catch(e){msg("status","❌ "+e.message);}
 };
 </script>
 </body>
