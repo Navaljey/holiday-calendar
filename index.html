@@ -35,9 +35,16 @@ const holidayData={
 };
 
 const fileIdCache={};
+// ── 자동 저장 설정 (docs/auto-save.md) ──
+const SYNC_KEY='calendar_sync',DEBOUNCE_MS=3000;
+const loadSyncMeta=()=>{try{const m=JSON.parse(localStorage.getItem(SYNC_KEY));if(m)return m}catch(e){}let has=false;try{has=Object.keys(JSON.parse(localStorage.getItem('calendar_v6'))||{}).length>0}catch(e){}return{base:null,dirty:has,last:null}};
+const ago=ts=>{const s=(Date.now()-ts)/1000;if(s<60)return'방금';if(s<3600)return`${Math.floor(s/60)}분 전`;if(s<86400)return`${Math.floor(s/3600)}시간 전`;const d=new Date(ts);return`${d.getMonth()+1}/${d.getDate()}`};
 const compressImage=file=>new Promise(resolve=>{const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const MAX=600;let{width:w,height:h}=i;if(w>h&&w>MAX){h=Math.round(h*MAX/w);w=MAX}else if(h>MAX){w=Math.round(w*MAX/h);h=MAX}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(i,0,0,w,h);c.toBlob(resolve,'image/jpeg',.7)};i.src=r.result};r.readAsDataURL(file)});
 const driveGetId=async(token,name)=>{if(fileIdCache[name])return fileIdCache[name];const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(name)}'+and+trashed=false&fields=files(id,name)`,{headers:{Authorization:`Bearer ${token}`}});const d=await r.json();const id=d.files?.[0]?.id||null;if(id)fileIdCache[name]=id;return id};
-const driveUpload=async(token,name,blob,mime)=>{const id=await driveGetId(token,name);const f=new FormData();f.append('metadata',new Blob([JSON.stringify({name,mimeType:mime})],{type:'application/json'}));f.append('file',blob);const u=id?`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=multipart`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';const r=await fetch(u,{method:id?'PATCH':'POST',headers:{Authorization:`Bearer ${token}`},body:f});const d=await r.json();if(d.id)fileIdCache[name]=d.id;return d};
+const driveErr=r=>{const e=Error('drive '+r.status);e.status=r.status;return e};
+// 파일 id + modifiedTime 조회 (충돌 확인용). 같은 이름이 여러 개면 가장 최근 것.
+const driveGetMeta=async(token,name)=>{const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(name)}'+and+trashed=false&orderBy=modifiedTime+desc&fields=files(id,modifiedTime)`,{headers:{Authorization:`Bearer ${token}`}});if(!r.ok)throw driveErr(r);const f=(await r.json()).files?.[0];if(!f)return null;fileIdCache[name]=f.id;return f};
+const driveUpload=async(token,name,blob,mime)=>{const id=await driveGetId(token,name);const f=new FormData();f.append('metadata',new Blob([JSON.stringify({name,mimeType:mime})],{type:'application/json'}));f.append('file',blob);const u=id?`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=multipart&fields=id,modifiedTime`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,modifiedTime';const r=await fetch(u,{method:id?'PATCH':'POST',headers:{Authorization:`Bearer ${token}`},body:f});if(!r.ok){if(r.status===404)delete fileIdCache[name];throw driveErr(r)}const d=await r.json();if(d.id)fileIdCache[name]=d.id;return d};
 const driveDownload=async(token,name)=>{const id=await driveGetId(token,name);if(!id)return null;const r=await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`,{headers:{Authorization:`Bearer ${token}`}});return r.ok?r:null};
 const driveDelete=async(token,name)=>{const id=await driveGetId(token,name);if(!id)return;await fetch(`https://www.googleapis.com/drive/v3/files/${id}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});delete fileIdCache[name]};
 
@@ -45,11 +52,101 @@ const App=()=>{
  const today=new Date();
  const [year,setYear]=useState(today.getFullYear()<2026?2026:Math.min(today.getFullYear(),2027));
  const [month,setMonth]=useState(today.getFullYear()>=2026?today.getMonth():0);
- const [todos,setTodos]=useState({});const [imageCache,setImageCache]=useState({});const [modal,setModal]=useState(null);const [viewImage,setViewImage]=useState(null);const [status,setStatus]=useState('');const tokenRef=useRef(null);
- useEffect(()=>{const s=localStorage.getItem('calendar_v6');if(s)try{setTodos(JSON.parse(s))}catch(e){}},[]);useEffect(()=>localStorage.setItem('calendar_v6',JSON.stringify(todos)),[todos]);
- const getToken=useCallback((prompt='')=>new Promise(resolve=>{if(tokenRef.current)return resolve(tokenRef.current);const wait=(n=20)=>{if(window.google?.accounts){try{const c=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:r=>{if(r.access_token){tokenRef.current=r.access_token;setTimeout(()=>tokenRef.current=null,3500*1000);resolve(r.access_token)}else resolve(null)}});c.requestAccessToken({prompt})}catch(e){resolve(null)}}else if(n) setTimeout(()=>wait(n-1),500);else resolve(null)};wait()}),[]);
- const saveDrive=async()=>{setStatus('저장 중...');try{const t=await getToken('select_account');if(!t)throw Error();await driveUpload(t,DATA_FILE,new Blob([JSON.stringify(todos)],{type:'application/json'}),'application/json');setStatus('✓ 저장 완료')}catch(e){setStatus('❌ 저장 실패')}setTimeout(()=>setStatus(''),2500)};
- const loadDrive=async()=>{setStatus('불러오는 중...');try{const t=await getToken('select_account');if(!t)throw Error();const r=await driveDownload(t,DATA_FILE);if(!r){setStatus('파일 없음');return}const d=JSON.parse(await r.text());setTodos(d);localStorage.setItem('calendar_v6',JSON.stringify(d));setImageCache({});setStatus('✓ 불러오기 완료')}catch(e){setStatus('❌ 불러오기 실패')}setTimeout(()=>setStatus(''),2500)};
+ const [todos,setTodos]=useState(()=>{try{return JSON.parse(localStorage.getItem('calendar_v6'))||{}}catch(e){return{}}});const [imageCache,setImageCache]=useState({});const [modal,setModal]=useState(null);const [viewImage,setViewImage]=useState(null);const tokenRef=useRef(null);
+ useEffect(()=>{try{localStorage.setItem('calendar_v6',JSON.stringify(todos))}catch(e){}},[todos]);
+
+ // ── 자동 저장 / 동기화 상태 ──
+ const todosRef=useRef(todos);todosRef.current=todos;
+ const metaRef=useRef(null);if(!metaRef.current)metaRef.current=loadSyncMeta();
+ const [sync,setSync]=useState('login'); // saved | pending | saving | checking | login | error | conflict
+ const [,setTick]=useState(0);
+ const skipRef=useRef(true),seqRef=useRef(0),busyRef=useRef(false),againRef=useRef(null),syncRef=useRef(null);
+ const saveMeta=p=>{metaRef.current={...metaRef.current,...p};try{localStorage.setItem(SYNC_KEY,JSON.stringify(metaRef.current))}catch(e){}setTick(x=>x+1)};
+
+ // 토큰을 받으면(로그인 배지·이미지 등 어떤 경로든) 바로 동기화 → 시작 시 자동 불러오기
+ const getToken=useCallback((prompt='')=>new Promise(resolve=>{if(tokenRef.current)return resolve(tokenRef.current);const wait=(n=20)=>{if(window.google?.accounts){try{const c=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:r=>{if(r.access_token){tokenRef.current=r.access_token;setTimeout(()=>tokenRef.current=null,3500*1000);resolve(r.access_token);setTimeout(()=>syncRef.current&&syncRef.current(),0)}else resolve(null)}});c.requestAccessToken({prompt})}catch(e){resolve(null)}}else if(n) setTimeout(()=>wait(n-1),500);else resolve(null)};wait()}),[]);
+
+ const pull=async(t,remote)=>{
+  const r=await driveDownload(t,DATA_FILE);if(!r)throw Error('download');
+  const d=JSON.parse(await r.text());
+  skipRef.current=true;setTodos(d);todosRef.current=d;
+  saveMeta({base:remote.modifiedTime,dirty:false,last:Date.now()});setImageCache({});
+ };
+
+ // 동기화 본체. 팝업을 절대 띄우지 않음(토큰이 있을 때만 동작).
+ // opts.pull: 드라이브 버전으로 덮어쓰기 / opts.force: 이 기기 버전으로 덮어쓰기
+ syncRef.current=async(opts={})=>{
+  if(busyRef.current){againRef.current=(opts.pull||opts.force)?opts:(againRef.current||{});return} // 실행 중이면 1회 예약
+  const t=tokenRef.current;
+  if(!t){setSync('login');return}
+  busyRef.current=true;
+  try{
+   setSync(metaRef.current.dirty||opts.force?'saving':'checking');
+   const remote=await driveGetMeta(t,DATA_FILE);
+   const m=metaRef.current;
+   if(opts.pull){
+    if(remote)await pull(t,remote);else{alert('드라이브에 저장된 파일이 없습니다.');if(m.dirty)againRef.current={}}
+    setSync(metaRef.current.dirty?'pending':'saved');return;
+   }
+   if(remote&&remote.modifiedTime!==m.base&&!opts.force){
+    const firstEmpty=!m.base&&!Object.keys(todosRef.current).length;
+    if(!m.dirty||firstEmpty){await pull(t,remote);setSync('saved');return}
+    setSync('conflict');return;
+   }
+   if(!m.dirty&&!opts.force){setSync('saved');return}
+   const seq=seqRef.current;
+   const d=await driveUpload(t,DATA_FILE,new Blob([JSON.stringify(todosRef.current)],{type:'application/json'}),'application/json');
+   const still=seqRef.current!==seq; // 업로드 중 생긴 변경
+   saveMeta({base:d.modifiedTime,dirty:still,last:Date.now()});
+   setSync(still?'pending':'saved');
+  }catch(e){
+   if(e.status===401){tokenRef.current=null;setSync('login')}else setSync('error');
+  }finally{
+   busyRef.current=false;
+   const o=againRef.current;if(o){againRef.current=null;setTimeout(()=>syncRef.current(o),0)}
+  }
+ };
+
+ // 변경 감지 → 3초 디바운스 후 저장
+ useEffect(()=>{
+  if(skipRef.current){skipRef.current=false;return}
+  seqRef.current++;saveMeta({dirty:true});setSync(tokenRef.current?'pending':'login');
+  const h=setTimeout(()=>syncRef.current(),DEBOUNCE_MS);
+  return()=>clearTimeout(h);
+ },[todos]);
+
+ // 앱 전환·네트워크 복구 시 동기화, 상대 시간 표시 갱신
+ useEffect(()=>{
+  const onVis=()=>{if(document.visibilityState==='visible'||metaRef.current.dirty)syncRef.current()};
+  const onOnline=()=>syncRef.current();
+  document.addEventListener('visibilitychange',onVis);window.addEventListener('online',onOnline);
+  const i=setInterval(()=>setTick(x=>x+1),30000);
+  return()=>{document.removeEventListener('visibilitychange',onVis);window.removeEventListener('online',onOnline);clearInterval(i)};
+ },[]);
+
+ const onBadge=()=>{if(sync==='conflict'||busyRef.current)return;if(!tokenRef.current)getToken('');else syncRef.current()};
+ const resolveConflict=which=>{
+  const msg=which==='pull'?'이 기기에서 저장하지 않은 변경이 사라지고 드라이브 버전으로 바뀝니다. 계속할까요?':'다른 기기에서 저장한 드라이브의 내용이 사라지고 이 기기 버전으로 덮어씁니다. 계속할까요?';
+  if(!confirm(msg))return;
+  if(which==='pull')try{localStorage.setItem('calendar_backup',JSON.stringify({at:Date.now(),todos:todosRef.current}))}catch(e){}
+  syncRef.current(which==='pull'?{pull:true}:{force:true});
+ };
+ const loadDrive=async()=>{
+  if(metaRef.current.dirty&&!confirm('이 기기에서 저장하지 않은 변경이 사라집니다. 드라이브 버전을 불러올까요?'))return;
+  if(!tokenRef.current&&!(await getToken('')))return;
+  if(metaRef.current.dirty)try{localStorage.setItem('calendar_backup',JSON.stringify({at:Date.now(),todos:todosRef.current}))}catch(e){}
+  syncRef.current({pull:true});
+ };
+ const meta=metaRef.current;
+ const badge={
+  saved:['✓ 저장됨'+(meta.last?' · '+ago(meta.last):''),'bg-emerald-50 text-emerald-700 border-emerald-200'],
+  pending:['● 저장 대기','bg-slate-100 text-slate-600 border-slate-200'],
+  saving:['⟳ 저장 중…','bg-slate-100 text-slate-600 border-slate-200'],
+  checking:['⟳ 동기화 확인 중…','bg-slate-100 text-slate-600 border-slate-200'],
+  login:['🔒 로그인해서 동기화'+(meta.dirty?' · 미저장 변경 있음':''),'bg-sky-500 text-white border-sky-500'],
+  error:['⚠ 저장 실패 · 이 기기에 보관됨','bg-amber-50 text-amber-700 border-amber-200'],
+  conflict:['⚠ 다른 기기 변경과 충돌','bg-rose-50 text-rose-700 border-rose-200']
+ }[sync];
  const loadImage=useCallback(async id=>{if(imageCache[id])return imageCache[id];try{const t=await getToken('');if(!t)return null;const r=await driveDownload(t,`${IMG_PREFIX}${id}.jpg`);if(!r)return null;const u=URL.createObjectURL(await r.blob());setImageCache(p=>({...p,[id]:u}));return u}catch(e){return null}},[imageCache,getToken]);
  const uploadImage=useCallback(async(id,b)=>{try{const t=await getToken('');if(!t)return false;await driveUpload(t,`${IMG_PREFIX}${id}.jpg`,b,'image/jpeg');setImageCache(p=>({...p,[id]:URL.createObjectURL(b)}));return true}catch(e){return false}},[getToken]);
  const deleteImage=useCallback(async id=>{try{const t=await getToken('');if(t)await driveDelete(t,`${IMG_PREFIX}${id}.jpg`);setImageCache(p=>{const n={...p};if(n[id])URL.revokeObjectURL(n[id]);delete n[id];return n})}catch(e){}},[getToken]);
@@ -59,7 +156,7 @@ const App=()=>{
  const goNext=()=>{if(month===11){if(year<2027){setYear(year+1);setMonth(0)}}else setMonth(month+1)};
  const monthTodos=()=>Array.from({length:daysIn(year,month)},(_,i)=>i+1).map(d=>{const date=fmt(year,month,d);return{date,day:d,todos:todos[date]||[]}}).filter(x=>x.todos.length);
  const renderCalendar=()=>{const cells=[];const start=new Date(year,month,1).getDay();for(let i=0;i<start;i++)cells.push(<div key={'e'+i}/>);for(let d=1;d<=daysIn(year,month);d++){const date=fmt(year,month,d),h=holidayData[date],dt=todos[date]||[],dow=new Date(year,month,d).getDay(),isToday=today.getFullYear()===year&&today.getMonth()===month&&today.getDate()===d;let color='text-slate-600';if(h?.vn)color='text-emerald-500 font-bold';else if(dow===0)color='text-rose-500 font-bold';else if(h?.kr)color='text-sky-500 font-bold';cells.push(<div key={d} onClick={()=>setModal(date)} className={`calendar-cell p-2 ${isToday?'bg-sky-50':'bg-white'} cursor-pointer`}><div className="flex justify-between"><span className={`text-base font-semibold ${color}`}>{d}</span>{dt.length>0&&<span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">{dt.filter(x=>!x.done).length}/{dt.length}</span>}</div><div className="mt-1 space-y-1">{h?.kr&&<div className="text-[9px] bg-sky-50 text-sky-600 rounded px-1.5 py-0.5 truncate">{h.kr}</div>}{h?.vn&&<div className="text-[9px] bg-emerald-50 text-emerald-600 rounded px-1.5 py-0.5 truncate">{h.vn}</div>}</div></div>)}return cells};
- return <div className="max-w-md mx-auto p-4 min-h-screen pb-10"><div className="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border"><button onClick={goPrev} disabled={year===2026&&month===0} className="p-2 text-slate-400 font-medium disabled:opacity-30">이전</button><div className="text-center"><h1 className="text-xl font-bold">{year}년 {month+1}월</h1>{status&&<div className="text-xs text-sky-500 mt-1">{status}</div>}</div><button onClick={goNext} disabled={year===2027&&month===11} className="p-2 text-slate-400 font-medium disabled:opacity-30">다음</button></div><div className="flex gap-2 mb-4"><button onClick={loadDrive} className="flex-1 bg-sky-500 text-white py-3 rounded-2xl text-sm font-bold">↓ 불러오기</button><button onClick={saveDrive} className="flex-1 bg-slate-900 text-white py-3 rounded-2xl text-sm font-bold">↑ 저장하기</button></div><div className="bg-white rounded-3xl shadow-sm border overflow-hidden mb-6"><div className="grid grid-cols-7 bg-slate-50 py-3 text-center text-xs font-bold text-slate-400">{['일','월','화','수','목','금','토'].map(d=><div key={d}>{d}</div>)}</div><div className="grid grid-cols-7">{renderCalendar()}</div></div>{monthTodos().length>0&&<div className="bg-white rounded-3xl shadow-sm border p-6"><h2 className="text-lg font-bold mb-4">이번 달 할 일</h2><div className="space-y-4 max-h-96 overflow-y-auto hide-scrollbar">{monthTodos().map(x=><div key={x.date} className="border-b pb-4"><div className="font-bold text-slate-600 mb-2">{month+1}월 {x.day}일</div>{x.todos.map(t=><div key={t.id} className="flex items-start gap-2"><div className={`flex-1 ${t.done?'todo-done':''}`}>{t.text}</div>{t.hasImage&&<Thumb id={t.id} load={loadImage} click={setViewImage}/>}</div>)}</div>)}</div></div>}{modal&&<Modal date={modal} todos={todos} setTodos={setTodos} close={()=>setModal(null)} loadImage={loadImage} uploadImage={uploadImage} deleteImage={deleteImage} setViewImage={setViewImage}/>} {viewImage&&<div onClick={()=>setViewImage(null)} className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"><img src={viewImage} className="max-w-full max-h-full object-contain"/></div>}</div>
+ return <div className="max-w-md mx-auto p-4 min-h-screen pb-10"><div className="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border"><button onClick={goPrev} disabled={year===2026&&month===0} className="p-2 text-slate-400 font-medium disabled:opacity-30">이전</button><div className="text-center"><h1 className="text-xl font-bold">{year}년 {month+1}월</h1></div><button onClick={goNext} disabled={year===2027&&month===11} className="p-2 text-slate-400 font-medium disabled:opacity-30">다음</button></div><div className="flex gap-2 mb-4"><button onClick={onBadge} className={`flex-1 border py-3 px-3 rounded-2xl text-sm font-bold truncate ${badge[1]}`}>{badge[0]}</button><button onClick={loadDrive} className="shrink-0 bg-white border text-slate-500 py-3 px-4 rounded-2xl text-sm font-bold">↓ 불러오기</button></div>{sync==='conflict'&&<div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-4 text-sm"><div className="font-bold text-rose-700 mb-1">다른 기기에서 변경된 내용이 있습니다</div><div className="text-rose-700/80 mb-3">이 기기에도 아직 저장하지 않은 변경이 있습니다. 남길 쪽을 선택하세요. 선택하지 않은 쪽의 변경은 사라집니다.</div><div className="flex gap-2"><button onClick={()=>resolveConflict('pull')} className="flex-1 bg-white border border-rose-200 text-rose-700 py-2 rounded-xl font-bold">드라이브 버전 불러오기</button><button onClick={()=>resolveConflict('push')} className="flex-1 bg-rose-600 text-white py-2 rounded-xl font-bold">이 기기 버전으로 덮어쓰기</button></div></div>}<div className="bg-white rounded-3xl shadow-sm border overflow-hidden mb-6"><div className="grid grid-cols-7 bg-slate-50 py-3 text-center text-xs font-bold text-slate-400">{['일','월','화','수','목','금','토'].map(d=><div key={d}>{d}</div>)}</div><div className="grid grid-cols-7">{renderCalendar()}</div></div>{monthTodos().length>0&&<div className="bg-white rounded-3xl shadow-sm border p-6"><h2 className="text-lg font-bold mb-4">이번 달 할 일</h2><div className="space-y-4 max-h-96 overflow-y-auto hide-scrollbar">{monthTodos().map(x=><div key={x.date} className="border-b pb-4"><div className="font-bold text-slate-600 mb-2">{month+1}월 {x.day}일</div>{x.todos.map(t=><div key={t.id} className="flex items-start gap-2"><div className={`flex-1 ${t.done?'todo-done':''}`}>{t.text}</div>{t.hasImage&&<Thumb id={t.id} load={loadImage} click={setViewImage}/>}</div>)}</div>)}</div></div>}{modal&&<Modal date={modal} todos={todos} setTodos={setTodos} close={()=>setModal(null)} loadImage={loadImage} uploadImage={uploadImage} deleteImage={deleteImage} setViewImage={setViewImage}/>} {viewImage&&<div onClick={()=>setViewImage(null)} className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"><img src={viewImage} className="max-w-full max-h-full object-contain"/></div>}</div>
 };
 
 const Thumb=({id,load,click})=>{const[s,setS]=useState(null);useEffect(()=>{let c=false;load(id).then(u=>{if(!c)setS(u)});return()=>{c=true}},[id]);return s?<img src={s} className="w-12 h-12 rounded object-cover" onClick={e=>{e.stopPropagation();click(s)}}/>:<div className="w-12 h-12 rounded bg-slate-100"/>};
